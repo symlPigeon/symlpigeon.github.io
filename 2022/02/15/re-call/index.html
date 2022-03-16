@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="symlPigeon">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="symlPigeon">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
+    <meta name="description" content="之前逆向工程的作业，感觉写得还是挺清楚的所以说挂上来。  调用惯例为一系列规则，规定了在机器层面如何进行函数调用。调用惯例一般定义了参数是通过寄存器还是栈保存（或者都有）、参数传递的顺序是自左到右还是自右到左、返回值是保存在寄存器还是在栈中（或者都有）等内容。 常⻅的调用惯例有CDECL，STDCALL，FASTCALL等。  CDECL调用 固定参数 123456789#define _cdec">
+<meta property="og:type" content="article">
+<meta property="og:title" content="调用惯例">
+<meta property="og:url" content="http://symlpigeon.github.io/2022/02/15/re-call/index.html">
+<meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
+<meta property="og:description" content="之前逆向工程的作业，感觉写得还是挺清楚的所以说挂上来。  调用惯例为一系列规则，规定了在机器层面如何进行函数调用。调用惯例一般定义了参数是通过寄存器还是栈保存（或者都有）、参数传递的顺序是自左到右还是自右到左、返回值是保存在寄存器还是在栈中（或者都有）等内容。 常⻅的调用惯例有CDECL，STDCALL，FASTCALL等。  CDECL调用 固定参数 123456789#define _cdec">
+<meta property="og:locale">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-2-Image-1.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-2-Image-2.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-3-Image-3.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-3-Image-4.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-4-Image-5.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-5-Image-6.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-5-Image-7.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-6-Image-8.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-6-Image-9.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-7-Image-10.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-8-Image-11.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-9-Image-12.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-9-Image-13.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-10-Image-14.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-10-Image-15.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-11-Image-16.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-12-Image-17.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-12-Image-18.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-13-Image-19.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-14-Image-20.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-14-Image-21.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-15-Image-22.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-15-Image-23.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-16-Image-24.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-17-Image-25.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-17-Image-26.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-18-Image-27.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-18-Image-28.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-19-Image-29.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-19-Image-30.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-20-Image-31.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-20-Image-32.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-21-Image-33.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-21-Image-34.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-22-Image-35.jpg">
+<meta property="article:published_time" content="2022-02-15T08:32:24.000Z">
+<meta property="article:modified_time" content="2022-03-16T09:10:12.693Z">
+<meta property="article:author" content="symlPigeon">
+<meta property="article:tag" content="逆向工程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://symlpigeon.github.io/2022/02/15/re-call/Page-2-Image-1.jpg">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/favicon.ico">
+    
+    <title>调用惯例 · syml&#39;s little gensokyo</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20210823" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20210823" as="style">
+    <link rel="stylesheet" href="/css/dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/css/mobile.css?v=20210823" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20210823" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20210823" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><meta name="generator" content="Hexo 5.4.1"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header-page header-page-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>symlpigeon's little gensokyo</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">symlpigeon&#39;s little gensokyo</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">调用惯例</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:50vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                调用惯例
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="二进制"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                二进制
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="逆向工程">逆向工程</a>
+    
+</div>
+
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">2.8k</span>阅读时长: <span class="post-count reading-time">10 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/02/15</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p><em>之前逆向工程的作业，感觉写得还是挺清楚的所以说挂上来。</em></p>
+<blockquote>
+<p>调用惯例为一系列规则，规定了在机器层面如何进行函数调用。调用惯例一般定义了参数是通过寄存器还是栈保存（或者都有）、参数传递的顺序是自左到右还是自右到左、返回值是保存在寄存器还是在栈中（或者都有）等内容。
+常⻅的调用惯例有CDECL，STDCALL，FASTCALL等。</p>
+</blockquote>
+<h1 id="cdecl调用"><code>CDECL</code>调用</h1>
+<h2 id="固定参数">固定参数</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _cdecl __attribute__((__cdecl__))</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> _cdecl <span class="title">sub</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (a - b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sub(<span class="number">2</span> , <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>使用命令<code>gcc cdecl.c -o cdecl -O0 -m32 -fno-pie</code>进行编译。在<code>x86-64</code>下，一般都是通过类似<code>FASTCALL</code>的方式进行调用，编译器往往会忽略掉设置的其他调用惯例，故这里设置编译选项<code>-m32</code>，指定目标为32位设备。而gcc默认开启PIE（Position
+Independent
+Executable），代码中会出现额外的函数<code>__x86.get_pc_thunk.ax</code>调用，增加这里分析的复杂性，故通过<code>-fno-pie</code>将其关闭。</p>
+<p>通过IDA反汇编<code>main</code>函数和<code>sub</code>函数如下：</p>
+<p><img src="Page-2-Image-1.jpg" /></p>
+<p>使用gdb进行动态调试。在<code>main</code>函数下断点。此时，程序的状态是：</p>
+<p><img src="Page-2-Image-2.jpg" /></p>
+<p><code>main</code>函数在调用<code>sub</code>函数（call
+sub）之前，进行了两步操作：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">push    1</span><br><span class="line">push    2</span><br><span class="line">call    sub; sub(2, 1);</span><br></pre></td></tr></table></figure>
+<p>分别是将参数 1 和 2
+压栈，注意到，这里压栈的顺序是从右向左压栈。执行完成后寄存器和栈的情况如下：</p>
+<p><img src="Page-3-Image-3.jpg" /></p>
+<p>帧基指针<code>EBP</code>指向地址<code>0xffffd028</code>的地址，在<code>EBP</code>下方是<code>main</code>函数的返回地址，在<code>EBP</code>上方的两个栈帧内保存了<code>main</code>传递给<code>sub</code>函数的参数。继续执行<code>call sub</code>命令，如下：</p>
+<p><img src="Page-3-Image-4.jpg" /></p>
+<p><code>call</code>指令会将下一条指令地址压栈，也就是现在<code>0xffffd01c</code>的位置的数据，接着程序跳转。</p>
+<p>在这里程序运行到位于<code>0x5655618</code>的<code>sub</code>函数位置。栈上<code>esp</code>指向的位置是目前<code>sub</code>函数的返回地址（现在的栈顶），即<code>call sub</code>的下一条指令。注意到，这里的<code>EBP</code>指向原先<code>main</code>函数的栈基址。接下来，执行下面的指令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">push ebp</span><br><span class="line">mov ebp, esp</span><br></pre></td></tr></table></figure>
+<p><img src="Page-4-Image-5.jpg" /></p>
+<p>注意栈指针的变化。第一行指令<code>push ebp</code>首先将原先的栈基指针压栈保存，接下来第二行指令修改<code>EBP</code>为<code>ESP</code>的值，即设置现在<code>sub</code>函数的栈信息，接下来，<code>sub</code>函数的栈就在此基础上增⻓。上面的这两行指令就是<strong>函数序言（function
+prologue）</strong>，其建立了函数的栈帧。</p>
+<p>接下来的指令是：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mov eax, dword ptr [ebp + 8]</span><br><span class="line">sub eax, dword ptr [ebp + 0xc]</span><br></pre></td></tr></table></figure>
+<p>执行完成后：</p>
+<p><img src="Page-5-Image-6.jpg" /></p>
+<p>这一部分是<code>sub</code>函数真正的执行操作部分。首先从栈上存放参数<code>int a</code>的位置获取数据放入<code>EAX</code>，接下来用<code>EAX</code>减去栈上存放的参数<code>int b</code>，完成操作<code>a - b</code>。</p>
+<p>接下来执行代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pop ebp</span><br><span class="line">ret</span><br></pre></td></tr></table></figure>
+<p>在执行结束pop ebp后，栈和寄存器变化如下：</p>
+<p><img src="Page-5-Image-7.jpg" /></p>
+<p><code>sub</code>函数这里通过<code>pop</code>指令恢复了调用<code>sub</code>的<code>main</code>函数的栈基址。同时，<code>ESP</code>的值也增加了<code>1</code>，这时，<code>ESP</code>指向的栈上位置存储的就是前面<code>call sub</code>时压入栈中的地址。接着，程序执行<code>ret</code>指令，返回目前栈顶存储的地址位置，也就是<code>ESP</code>指向单元对应数据的地址<code>0x565561a4（main+12）</code>，同时，<code>ESP</code>的值增加<code>1</code>。</p>
+<p><img src="Page-6-Image-8.jpg" /></p>
+<p>可以看到，程序已经返回了先前的<code>main</code>函数继续运行的位置。而先前压入栈的参数现在依旧在栈中，这样程序就恢复到了执行<code>call sub</code>之前的状态。<code>pop ebp</code>和<code>ret</code>这两条指令就是<strong>函数尾声（function
+epilogue）</strong>，用来结束函数调用并且恢复函数调用之前的栈帧。</p>
+<p>至此，函数sub执行完成。而先前计算的值记录在<code>EAX</code>，返回给<code>main</code>函数。</p>
+<p>接下来，程序执行了<code>add esp, 8</code>的命令：</p>
+<p><img src="Page-6-Image-9.jpg" /></p>
+<p>堆栈现在恢复到了将参数压栈之前的状态。也就是说，这一指令的作用是清理栈。</p>
+<p>至此，函数调用过程完成。</p>
+<h2 id="vararg">vararg</h2>
+<p>CDECL调用惯例的另一个作用是用在可变参数函数中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdarg.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> num, ...)</span></span>&#123;</span><br><span class="line">    va_list valist;</span><br><span class="line">    <span class="keyword">int</span> sum = <span class="number">0</span> ;</span><br><span class="line">    <span class="keyword">int</span> i;</span><br><span class="line">    va_start(valist, num);</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span> ; i &lt; num; i++)</span><br><span class="line">        sum += va_arg(valist, <span class="keyword">int</span>);</span><br><span class="line">    va_end(valist);</span><br><span class="line">    <span class="keyword">return</span> sum;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sum( <span class="number">4</span> , <span class="number">1</span> , <span class="number">2</span> , <span class="number">3</span> , <span class="number">4</span> );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里使用了可变参数函数<code>sum</code>，即使我们显式指定其调用惯例为<code>_stdcall</code>，编译器也会生成<code>_cdecl</code>的调用惯例。</p>
+<p><img src="Page-7-Image-10.jpg" /></p>
+<p>这里可以看到调用方负责进行栈的清理。</p>
+<h3 id="特点">特点</h3>
+<p>这样可以总结<code>CDECL</code>调用的特点：</p>
+<ul>
+<li>参数从右向左压栈</li>
+<li>在调用完成后，调用方负责清栈</li>
+<li>返回值保存在<code>EAX</code>中</li>
+</ul>
+<h1 id="stdcall调用"><code>STDCALL</code>调用</h1>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _stdcall __attribute__((__stdcall__))</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> _stdcall <span class="title">sub</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (a - b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sub( <span class="number">2</span> , <span class="number">1</span> );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>同样，编译之后通过IDA反编译如下：</p>
+<p><img src="Page-8-Image-11.jpg" /></p>
+<p>通过<code>gdb</code>进行调试，断点设置在<code>main</code>函数入口：</p>
+<p><img src="Page-9-Image-12.jpg" /></p>
+<p>与前面<code>_cdecl</code>调用类似，这里先将参数压栈，顺序和<code>_cdecl</code>同样是自右向左。</p>
+<p><img src="Page-9-Image-13.jpg" /></p>
+<p>接下来执行函数调用。这一部分都和前面的<code>_cdecl</code>类似。</p>
+<p><img src="Page-10-Image-14.jpg" /></p>
+<p>后面的函数序言部分和之前类似，实际的减法计算也和前面一致，在这里就不一一截图。</p>
+<p>和前面一样运行到<code>pop ebp</code>之后，下面的命令是<code>ret 8</code>而并不是简单的<code>ret</code>。</p>
+<p><img src="Page-10-Image-15.jpg" /></p>
+<p><code>ret 8</code>意味着执行这条指令时，程序将返回<code>ESP</code>指向的栈单元中存储的地址，同时将栈顶下移，也就是清理堆栈的过程。</p>
+<p><img src="Page-11-Image-16.jpg" /></p>
+<p>这里注意堆栈的变化，在返回<code>main</code>的时候，栈上的调用参数数据已经被清理了，栈回到了调用<code>sub</code>函数之前的状态。而清理栈的状态在<code>_cdecl</code>调用惯例中是调用者即<code>main</code>负责的。而函数的返回值和前面一样，存储在<code>EAX</code>中。</p>
+<p>一般来说，Windows
+API多数使用<code>_stdcall</code>调用惯例，而因此，Windows
+API中的函数基本上都是固定参数的，因为<code>_stdcall</code>并不支持可变参数（<code>_stdcall</code>是由被调用者清理栈，但是被调用者并不清楚传入参数的个数）。<em>然而实际上真的是这样的吗？恐怕不一定吧……</em></p>
+<h2 id="特点-1">特点</h2>
+<p>由此，我们可以得到<code>STDCALL</code>的特点：</p>
+<ul>
+<li>参数由左向右压栈</li>
+<li>被调用者负责清理堆栈</li>
+<li>返回值由EAX传递</li>
+</ul>
+<h1 id="fastcall调用">FASTCALL调用</h1>
+<h2 id="x86-fastcall">x86 FASTCALL</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _fastcall __attribute__((__fastcall__))</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> _fastcall <span class="title">sub</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (a - b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sub( <span class="number">2</span> , <span class="number">1</span> );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>通过gcc编译，使用<code>IDA</code>反编译如下：</p>
+<p><img src="Page-12-Image-17.jpg" /></p>
+<p>下面通过gdb进行动态调试分析，断点设置在<code>main</code>入口处：</p>
+<p><img src="Page-12-Image-18.jpg" /></p>
+<p>注意在<code>sub</code>函数调用之前的代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mov     edx, 1</span><br><span class="line">mov     ecx, 2</span><br><span class="line">call    sub     ; (_fastcall) sub(2, 1);</span><br></pre></td></tr></table></figure>
+<p>也就是说，sub函数的两个参数是通过ECX和EDX寄存器进行传递的，这和前面使用堆栈传递参数是不同的。下面的运行结果说明了这一点。</p>
+<p><img src="Page-13-Image-19.jpg" /></p>
+<p>接下来，<code>sub</code>的执行过程和前面类似。但是在函数序言之后，<code>sub</code>函数开辟了额外的栈空间：</p>
+<p><img src="Page-14-Image-20.jpg" /></p>
+<p>接下来的指令实现了<code>EAX = ECX - EDX</code>的逻辑。这里的操作比较冗⻓，使用了一部分栈空间作为中间变量的存储。在运行完成后，计算的结果依旧存在<code>EAX</code>内。</p>
+<p><img src="Page-14-Image-21.jpg" /></p>
+<p>注意到这时EAX的值为<code>2 - 1 = 1</code>。接下来函数执行<code>leave</code>指令。<code>leave</code>的作用是清除函数的堆栈，并且恢复调用之前的栈信息。</p>
+<p><img src="Page-15-Image-22.jpg" /></p>
+<p>这时，<code>EBP</code>已经恢复到了<code>main</code>函数栈基址的位置上（也就是调用<code>sub</code>之前的位置）。而<code>ESP</code>则在下一步修改：</p>
+<p><img src="Page-15-Image-23.jpg" /></p>
+<p><code>ret</code>指令执行，程序恢复原先的运行状态，函数调用结束，返回值在EAX中。</p>
+<p>上面的是仅仅有两个参数的情况，对于有着更多参数的函数，<code>FASTCALL</code>的传参也有相应的改变：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _fastcall __attribute__((__fastcall__))</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> _fastcall <span class="title">sub4</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b， <span class="keyword">int</span> c, <span class="keyword">int</span> d)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (a - b - c - d);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sub4( <span class="number">10</span> , <span class="number">5</span> , <span class="number">3</span> , <span class="number">1</span> );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译之后，通过gdb调试，同样在main函数设置断点。</p>
+<p><img src="Page-16-Image-24.jpg" /></p>
+<p>在这里，sub4函数一共有4个参数，从左到右分别是<code>10, 5, 3, 1</code>，这里前两个参数<code>10</code>和<code>5</code>分别通过ECX和EDX进行传递，而剩下的参数则是自右向左压栈。</p>
+<p><img src="Page-17-Image-25.jpg" /></p>
+<p>而剩下的内容和前面类似。</p>
+<p><img src="Page-17-Image-26.jpg" /></p>
+<p>在函数序言后，函数申请了栈空间用以作为中间存储。接下来程序进行计算，并且将结果放入EAX中。在函数最后，执行指令<code>leave</code>，清理前面申请的堆栈：</p>
+<p><img src="Page-18-Image-27.jpg" /></p>
+<p>在<code>sub</code>内清理的堆栈被处理完毕，接下来，执行<code>ret 8</code>指令，返回<code>main</code>同时清理用于传递数据的堆栈：</p>
+<p><img src="Page-18-Image-28.jpg" /></p>
+<p>对比前一张图，这里的堆栈已经回到了函数调用之前的状态，至此，<code>FASTCALL</code>调用完成。</p>
+<h3 id="特点-2">特点</h3>
+<p>总结<code>x86 FASTCALL</code>特点：</p>
+<ul>
+<li>前两个参数通过ECX和EDX传递，剩余参数自右向左压栈。</li>
+<li>返回值保存在EAX.</li>
+<li>被调用者清理堆栈。</li>
+</ul>
+<h2 id="x64下调用惯例">x64下调用惯例</h2>
+<h3
+id="linuxsystem-v-amd64-abi"><code>Linux（System V AMD64 ABI）</code></h3>
+<p>以下面的程序为例：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sub</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b, <span class="keyword">int</span> c, <span class="keyword">int</span> d, <span class="keyword">int</span> e, <span class="keyword">int</span> f, <span class="keyword">int</span> g, <span class="keyword">int</span> h, <span class="keyword">int</span> i)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (a - b - c - d - e - f - g - h - i);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sub(<span class="number">100</span> , <span class="number">30</span> , <span class="number">20</span> , <span class="number">10</span> , <span class="number">8</span> , <span class="number">7</span> , <span class="number">6</span> , <span class="number">5</span> , <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>gcc编译之后，使用gdb进行动态调试，断点设置在<code>main</code>函数内。</p>
+<p>这里显示了寄存器传递值的顺序：</p>
+<p><img src="Page-19-Image-29.jpg" /></p>
+<p>参数的传递使用了按顺序自左向右使用了<code>RDI、RSI、RDX、RCX、R9、R8</code>六个寄存器，剩下的参数由右向左压栈通过栈传递，执行之后，栈上情况：</p>
+<p><img src="Page-19-Image-30.jpg" /></p>
+<p>接下来进入<code>sub</code>函数继续运行，执行完后，<code>sub</code>函数结束：</p>
+<p><img src="Page-20-Image-31.jpg" /></p>
+<p>这里sub函数并没有清理堆栈。</p>
+<p><img src="Page-20-Image-32.jpg" /></p>
+<p>后面main函数的指令用以清理堆栈，恢复到调用之前的状态。</p>
+<p><img src="Page-21-Image-33.jpg" /></p>
+<p>到这里，栈恢复到调用之前的状态，函数调用过程结束。</p>
+<h3 id="微软x86-64调用规定">微软x86-64调用规定</h3>
+<p>使用跨平台编译工具，将上面的程序编译为64位Windows平台的可执行程序：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">x86_64-w64-mingw32-gcc x64call.c -o x64call_w64.exe -O0</span><br></pre></td></tr></table></figure>
+<p>通过x64dbg进行调试，断点设置在<code>main</code>函数内。</p>
+<p><img src="Page-21-Image-34.jpg" /></p>
+<p>执行到调用<code>sub</code>函数之前，注意寄存器和栈的变化：前四个参数使用<code>RCX、RDX、R8、R9</code>传递，剩下的参数自右向左压栈。</p>
+<p>函数体内和Linux下的系统调用类似。返回之后，<code>main</code>函数负责清理栈，恢复到调用之前的状态：</p>
+<p><img src="Page-22-Image-35.jpg" /></p>
+<p><code>add rsp, 50</code>将堆栈恢复。至此，函数调用完成。</p>
+<h3 id="特点-3">特点</h3>
+<ul>
+<li>调用者负责清理栈。</li>
+<li>Windows
+x64调用惯例通过<code>RCX、RDX、R8、R9</code>四个寄存器传递前四个参数，而Linux
+x64调用惯例通过<code>RDI、RSI、RDX、RCX、R8、R9</code>六个寄存器传递前六个参数，剩余的参数全部自右向左压入栈中。</li>
+<li>返回值通过EAX传递。</li>
+</ul>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2022/02/23/mpc-2-gc/" title="安全多方计算——乱码电路协议">
+                    <div class="nextTitle">安全多方计算——乱码电路协议</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2022/02/10/re-review2/" title="ELF格式学习">
+                    <div class="prevTitle">ELF格式学习</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+        
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+
+
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+            
+                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+            
+                <span class="iconfont-archer qq" title=qq>
+                    
+                    <img class="profile-qr" src="/assets/qq.png" />
+                </span>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
+            
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#cdecl%E8%B0%83%E7%94%A8"><span class="toc-number">1.</span> <span class="toc-text">CDECL调用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%BA%E5%AE%9A%E5%8F%82%E6%95%B0"><span class="toc-number">1.1.</span> <span class="toc-text">固定参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#vararg"><span class="toc-number">1.2.</span> <span class="toc-text">vararg</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%B9%E7%82%B9"><span class="toc-number">1.2.1.</span> <span class="toc-text">特点</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#stdcall%E8%B0%83%E7%94%A8"><span class="toc-number">2.</span> <span class="toc-text">STDCALL调用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%B9%E7%82%B9-1"><span class="toc-number">2.1.</span> <span class="toc-text">特点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#fastcall%E8%B0%83%E7%94%A8"><span class="toc-number">3.</span> <span class="toc-text">FASTCALL调用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#x86-fastcall"><span class="toc-number">3.1.</span> <span class="toc-text">x86 FASTCALL</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%B9%E7%82%B9-2"><span class="toc-number">3.1.1.</span> <span class="toc-text">特点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#x64%E4%B8%8B%E8%B0%83%E7%94%A8%E6%83%AF%E4%BE%8B"><span class="toc-number">3.2.</span> <span class="toc-text">x64下调用惯例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#linuxsystem-v-amd64-abi"><span class="toc-number">3.2.1.</span> <span class="toc-text">Linux（System V AMD64 ABI）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BE%AE%E8%BD%AFx86-64%E8%B0%83%E7%94%A8%E8%A7%84%E5%AE%9A"><span class="toc-number">3.2.2.</span> <span class="toc-text">微软x86-64调用规定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%B9%E7%82%B9-3"><span class="toc-number">3.2.3.</span> <span class="toc-text">特点</span></a></li></ol></li></ol></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 12
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/23</span>
+            <a class="archive-post-title" href="/2022/02/23/mpc-2-gc/">安全多方计算——乱码电路协议</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/15</span>
+            <a class="archive-post-title" href="/2022/02/15/re-call/">调用惯例</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/10</span>
+            <a class="archive-post-title" href="/2022/02/10/re-review2/">ELF格式学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/07</span>
+            <a class="archive-post-title" href="/2022/02/07/mpc-1/">安全多方计算——定义、原语</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/20</span>
+            <a class="archive-post-title" href="/2022/01/20/re-review1/">IA32内存、寄存器、数据</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/08</span>
+            <a class="archive-post-title" href="/2022/01/08/homework-for-crypto/">密码学实验</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/07</span>
+            <a class="archive-post-title" href="/2022/01/07/some-attack-on-rsa-I/">一些针对RSA的攻击（I）</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/02</span>
+            <a class="archive-post-title" href="/2022/01/02/cbc-padding-oracle-attack/">CBC Padding Oracle Attack</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2021 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/09</span>
+            <a class="archive-post-title" href="/2021/12/09/aes-ecb-attack/">Byte-at-a-time ECB Decryption</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/06</span>
+            <a class="archive-post-title" href="/2021/12/06/CVE-2021-39503/">CVE-2021-39503复现</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/sm2/">国密SM2算法学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/HelloWorld/">HelloWorld</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Web">
+                <span class="iconfont-archer">&#xe606;</span>
+                Web
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="RCE">
+                <span class="iconfont-archer">&#xe606;</span>
+                RCE
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="PHP">
+                <span class="iconfont-archer">&#xe606;</span>
+                PHP
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="对称密码">
+                <span class="iconfont-archer">&#xe606;</span>
+                对称密码
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="MPC">
+                <span class="iconfont-archer">&#xe606;</span>
+                MPC
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="逆向工程">
+                <span class="iconfont-archer">&#xe606;</span>
+                逆向工程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="x86架构">
+                <span class="iconfont-archer">&#xe606;</span>
+                x86架构
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ELF">
+                <span class="iconfont-archer">&#xe606;</span>
+                ELF
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="x86">
+                <span class="iconfont-archer">&#xe606;</span>
+                x86
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="SM2">
+                <span class="iconfont-archer">&#xe606;</span>
+                SM2
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="椭圆曲线">
+                <span class="iconfont-archer">&#xe606;</span>
+                椭圆曲线
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="数论">
+                <span class="iconfont-archer">&#xe606;</span>
+                数论
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="RSA">
+                <span class="iconfont-archer">&#xe606;</span>
+                RSA
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="乱码电路">
+                <span class="iconfont-archer">&#xe606;</span>
+                乱码电路
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="Web安全">
+            <span class="iconfont-archer">&#xe60a;</span>
+            Web安全
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="密码学">
+            <span class="iconfont-archer">&#xe60a;</span>
+            密码学
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="二进制">
+            <span class="iconfont-archer">&#xe60a;</span>
+            二进制
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMeta = {
+        url: "http://symlpigeon.github.io",
+        root: "/",
+        author: "symlPigeon"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20210823"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20210823"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20210823" async></script>
+        
+        <!-- mermaid -->
+        
+            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
+            <script>
+                if (window.mermaid) {
+                    mermaid.initialize({theme: 'dark'});
+                }
+            </script>
+        
+    </body>
+</html>
