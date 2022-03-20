@@ -19,20 +19,24 @@
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
     <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
-    <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
-<meta property="og:type" content="website">
-<meta property="og:title" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:url" content="http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/index.html">
+    <meta name="description" content="RSA的运行过程中，对于一个公钥\((n,e)\)，加密过程计算的是明文\(m\)的幂次即\(m^e\mod n\)，常见的一个\(e\)的取值是65537即0x10001，通过快速幂计算这个过程一般来说还是比较容易的。但是问题在于，私钥指数\((n,d)\)中的\(d\equiv e^{-1}({\rm mod}\ \phi(n))\)，这个\(d\)的取值可能是十分大的，相应带来的也就是巨大的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Wiener&#39;s Attack">
+<meta property="og:url" content="http://symlpigeon.github.io/2022/03/16/wiener-attack/index.html">
 <meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
+<meta property="og:description" content="RSA的运行过程中，对于一个公钥\((n,e)\)，加密过程计算的是明文\(m\)的幂次即\(m^e\mod n\)，常见的一个\(e\)的取值是65537即0x10001，通过快速幂计算这个过程一般来说还是比较容易的。但是问题在于，私钥指数\((n,d)\)中的\(d\equiv e^{-1}({\rm mod}\ \phi(n))\)，这个\(d\)的取值可能是十分大的，相应带来的也就是巨大的">
 <meta property="og:locale">
+<meta property="article:published_time" content="2022-03-16T14:30:07.000Z">
+<meta property="article:modified_time" content="2022-03-20T14:41:44.975Z">
 <meta property="article:author" content="symlPigeon">
+<meta property="article:tag" content="数论">
+<meta property="article:tag" content="RSA">
 <meta name="twitter:card" content="summary">
     <meta http-equiv="Cache-control" content="no-cache">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <link rel="icon" href="/assets/favicon.ico">
     
-    <title>syml&#39;s little gensokyo</title>
+    <title>Wiener&#39;s Attack · syml&#39;s little gensokyo</title>
     <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
 /* This file is meant as a standalone workflow for
 - testing support for link[rel=preload]
@@ -233,6 +237,8 @@
         }
     </script>
     
+        <body class="post-body">
+    
         <!-- header -->
         <header class="header-page header-page-mobile">
     <!-- top read progress line -->
@@ -262,6 +268,17 @@
     </div>
     <!-- toggle banner for post layout -->
     
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">symlpigeon&#39;s little gensokyo</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">Wiener's Attack</a>
+            </div>
+        </div>
+    
 </header>
 
         <!-- fixed footer -->
@@ -288,24 +305,93 @@
 
 
 
+    height:50vh;
+
 ">
     
     <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
             
     <div class="site-intro-placeholder"></div>
-    <div class="site-intro-img" style="background-image: url(/)"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
     <div class="site-intro-meta">
         <!-- 标题  -->
         <h1 class="intro-title">
             <!-- 主页  -->
+            
+                Wiener's Attack
+            <!-- 404 -->
             
         </h1>
         <!-- 副标题 -->
         <p class="intro-subtitle">
             <!-- 主页副标题  -->
             
+                
+            <!-- 404 -->
+            
         </p>
         <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="密码学"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                密码学
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="数论">数论</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="RSA">RSA</a>
+    
+</div>
+
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">1.7k</span>阅读时长: <span class="post-count reading-time">7 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/03/16</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
         
     </div>
 </div>
@@ -435,180 +521,287 @@
 
             <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
             <div class="container container-unloaded">
-                <main class="main index-page">
-    
-        
-        
-        
-        
-            
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2022/02/15/re-call/">
-                
-                <span class="abstract-title-text">调用惯例</span>
-            </a>
-            <div class="abstract-content">
-                x86和x64对应的几种调用惯例。
-            </div>
-            <!-- read more -->
-            
-                <div class="abstract-read-more-button">
-                    <a href="/2022/02/15/re-call/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/03/16">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/02/15</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="二进制"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                二进制
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="逆向工程">逆向工程</a>
-    
-</div>
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>RSA的运行过程中，对于一个公钥<span
+class="math inline">\((n,e)\)</span>，加密过程计算的是明文<span
+class="math inline">\(m\)</span>的幂次即<span
+class="math inline">\(m^e\mod n\)</span>，常见的一个<span
+class="math inline">\(e\)</span>的取值是65537即0x10001，通过快速幂计算这个过程一般来说还是比较容易的。但是问题在于，私钥指数<span
+class="math inline">\((n,d)\)</span>中的<span
+class="math inline">\(d\equiv e^{-1}({\rm mod}\
+\phi(n))\)</span>，这个<span
+class="math inline">\(d\)</span>的取值可能是十分大的，相应带来的也就是巨大的解密计算量。这个加解密计算量不对等的问题，对于一些缺少计算能力的嵌入式设备可以说是致命的。</p>
+<p>一个加速的思想在于，构造一个比较小的私钥指数<span
+class="math inline">\(d\)</span>，这样解密的过程可以得到显著的加快。但是这样的构造实际上会破坏RSA的安全性。</p>
+<h1 id="连分数">连分数</h1>
+<p>Wiener的思路是构造连分数以攻破解密指数。</p>
+<p>连分数是下面这样形式的分数：</p>
+<p><span class="math display">\[
+\begin{aligned}
+&amp;\cfrac{a_1}{q_1+\cfrac{a_2}{q_2+\cfrac{a_3}{...\cfrac{...}{q_{m-1}+\cfrac{a_m}{q_m}}}}}
+\\[2ex]
+=&amp;a_1/(q_1+a_2/(q_2+a_3/(../(q_{m-1}+a_m/q_m)...)))
+\end{aligned}
+\]</span></p>
+<p>在Wiener的构造中，定义下面的式子为：</p>
+<p><span class="math display">\[
+\begin{aligned}
+&amp;&lt;q_0,q_1,...,q_m&gt;\\[2ex]
+=&amp;q_0+1/(q_1+1/(q_2+1/(.../(q_{m-1}+1/q_m)...)))\\[2ex]
+=&amp;q_0+\cfrac{1}{q_1+\cfrac{1}{q_2+\cfrac{1}{...\cfrac{...}{q_{m-1}+\cfrac{1}{q_m}}}}}
+\end{aligned}
+\]</span></p>
+<p>例如<span class="math inline">\(&lt;0,2,1,3&gt; =
+0+1/(2+1/(1+1/3))=\frac{4}{11}\)</span>，在这里称<span
+class="math inline">\(&lt;0,2,1,3&gt;\)</span>就是<span
+class="math inline">\(\frac{4}{11}\)</span>的连分数扩展。</p>
+<p>通过这样的方式可以将一个整数<span
+class="math inline">\(f\)</span>表示成连分数：每一层连分数中，都用<span
+class="math inline">\(q_i\)</span>表示整数部分（商），用<span
+class="math inline">\(r_i\)</span>表示剩余部分（余数），带入下一步的连分数中得到<span
+class="math inline">\(r_i=q_{i+1}+r_{i+1}\)</span>：</p>
+<p><span class="math display">\[
+\begin{equation}\tag{1}
+\begin{aligned}
+&amp;q_0=\lfloor f\rfloor,r_0=f-q_0\\[2ex]
+&amp;q_i=\lfloor
+\frac{1}{r_{i-1}}\rfloor,r_i=\frac{1}{r_{i-1}}-q_i,i=1,2,3,...,m
+\end{aligned}
+\end{equation}
+\]</span></p>
+<p>这样到<span class="math inline">\(r_m=0\)</span>时，就能够构造出<span
+class="math inline">\(f=&lt;q_0,q_1,...,q_m&gt;\)</span>。</p>
+<p>这边可以注意到最后一项的<span
+class="math inline">\(q_m\)</span>必定是大于等于2的，如果<span
+class="math inline">\(q_m=1\)</span>，那么必定会有<span
+class="math inline">\(r_{m-1}=1\)</span>，显然这是不可能的，因为<span
+class="math inline">\(r_i\)</span>表示的是小数部分。</p>
+<p>另外需要注意的一个性质是这样的：</p>
+<p>对于偶数m，有：</p>
+<p><span class="math display">\[
+\tag{2.1}
+\langle q_0,q_1,...,q_m\rangle &lt; \langle
+q_0,q_1,...,q_{m-1},q_m+x\rangle,(x&gt;0)
+\]</span></p>
+<p>而对于奇数m，则是：</p>
+<p><span class="math display">\[
+\tag{2.2}
+\langle q_0,q_1,...,q_m\rangle &gt; \langle
+q_0,q_1,...,q_{m-1},q_m+x\rangle,(x&gt;0)
+\]</span></p>
+<p>从直观上理解来说，当最后一位从<span
+class="math inline">\(q_m\)</span>变为了<span
+class="math inline">\(q_m+x\)</span>也就是增大了，那么外面一层的分数即<span
+class="math inline">\(q_{m-1}+\frac{1}{q_m+x}\)</span>则会变小，再外面一层则会增大……</p>
+<p>完成了连分数的构建，接下来的问题就是怎么样从一个连分数去恢复出原来的数<span
+class="math inline">\(f\)</span>。</p>
+<p>最简单的方法也就是从<span
+class="math inline">\(q_m\)</span>开始，从最底层向上逐级计算。Wiener的思路则采用的是一种自顶向下的方法。</p>
+<p>构建这样的两个序列<span class="math inline">\(n_i\)</span>和<span
+class="math inline">\(d_i\)</span>，其中<span
+class="math inline">\(i=0,1,...,m\)</span>：</p>
+<p><span class="math display">\[
+\frac{n_i}{d_i}=\langle q_0,q_1,...,q_i\rangle,\ \gcd(n_i,d_i)=1\
+\]</span></p>
+<p>这样也就是有（<span
+class="math inline">\(i=2,3,...,m\)</span>）：</p>
+<p><span class="math display">\[
+\begin{equation}\tag{3}
+\begin{aligned}
+&amp;n_0=q_0,&amp;d_0=1\\[2ex]
+&amp;n_1=q_0q_1+1,&amp;d_1=q_1\\[2ex]
+&amp;...&amp;\\[2ex]
+&amp;n_i=q_in_{i-1}+n_{i-2},&amp;d_i=q_id_{i-1}+d_{i-2}
+\end{aligned}
+\end{equation}
+\]</span></p>
+<p>这样就可以重建整个连分数对应的<span
+class="math inline">\(f=\cfrac{n_m}{d_m}\)</span>了。</p>
+<p>此外，可以通过上面的式子构造得到：</p>
+<p><span class="math display">\[
+n_id_{i-1}-n_{i-1}d_i=-(-1)^i
+\]</span></p>
+<p>这会在后面被用到。</p>
+<h1 id="连分数算法">连分数算法</h1>
+<p>我们令<span
+class="math inline">\(f&#39;=f\cdot(1-\delta),\delta&gt;0\)</span>。</p>
+<p>如果<span class="math inline">\(\delta\)</span>足够小的话，那么<span
+class="math inline">\(f&#39;\)</span>非常趋近于<span
+class="math inline">\(f\)</span>，也就可以通过<span
+class="math inline">\(f&#39;\)</span>去求到<span
+class="math inline">\(f\)</span>。</p>
+<p>这里令<span class="math inline">\(q_i,r_i\)</span>和<span
+class="math inline">\(q_i&#39;r_i&#39;\)</span>分别是<span
+class="math inline">\(f\)</span>和<span
+class="math inline">\(f&#39;\)</span>按照前面公式(1)形式得到的商和余数。我们可以通过这样的方法计算出<span
+class="math inline">\(f\)</span>：</p>
+<ul>
+<li>计算<span
+class="math inline">\(f&#39;\)</span>连分数扩展的下一个对应的商<span
+class="math inline">\(q_i&#39;\)</span>。</li>
+<li>使用上面公式(3)构造下面形式的连分数： <span class="math display">\[
+\begin{aligned}
+  \langle q_0&#39;,q_1&#39;,...,q_i&#39;+1\rangle,&amp;{\rm if}\ i\ {\rm
+is\ even},\\[2ex]
+  \langle q_0&#39;,q_1&#39;,...,q_i&#39;\rangle,&amp;{\rm if}\ i\ {\rm
+is\ odd}
+\end{aligned}
+\]</span></li>
+<li>如果上面构造的连分数等于<span
+class="math inline">\(f\)</span>，那么算法结束，否则继续。</li>
+</ul>
+<p>如果<span class="math inline">\(f\)</span>比<span
+class="math inline">\(f&#39;\)</span>要大，又根据公式(2.1)(2.2)，在<span
+class="math inline">\(i\)</span>为奇数，有<span
+class="math inline">\(\langle
+q_0&#39;,q_1&#39;,...,q_{i-1}&#39;,q_i&#39;\rangle &lt; \langle
+q_0&#39;,q_1&#39;,...,q_{i-1}&#39;,q_i&#39;+r_i&#39;\)</span>，所以说上面的式子中，在奇数的情况下最后一项为<span
+class="math inline">\(q_i&#39;+1\)</span>。</p>
+<p>当满足</p>
+<p><span class="math display">\[
+\begin{aligned}
+\langle q_0,q_1,...,q_m-1\rangle &lt; f&#39; \leq \langle
+q_0,q_1,...,q_m\rangle,&amp;\\[2ex]
+&amp;{\rm if}\ m \ {\rm is\ even},\\[2ex]
+\langle q_0,q_1,...,q_m+1\rangle &lt; f&#39; \leq \langle
+q_0,q_1,...,q_{m-1}\rangle,&amp;\\[2ex]
+&amp;{\rm if}\ m \ {\rm is\ odd}
+\end{aligned}
+\]</span></p>
+<p>在这种情况下，这个算法能够成功地求出<span
+class="math inline">\(f\)</span>。Wiener求出，对应的情况下<span
+class="math inline">\(\delta\)</span>的取值满足：</p>
+<p><span class="math display">\[
+\begin{equation}\tag{4}
+\delta&lt;\cfrac{1}{\cfrac{3}{2}n_md_m}
+\end{equation}
+\]</span></p>
+<p><span
+class="math inline">\(n_m,d_m\)</span>为满足上文公式(3)的构造。这个算法的时间复杂度是<span
+class="math inline">\(O(\log x)\)</span>，其中<span
+class="math inline">\(x\)</span>为<span
+class="math inline">\(\max(n_m,d_m)\)</span>。</p>
+<h1 id="rsa">RSA</h1>
+<p>一种RSA的构造中，私钥指数的取值是这样的：</p>
+<p><span class="math display">\[
+ed\equiv 1(mod\ LCM(p-1,q-1))
+\]</span></p>
+<p>也就是存在一个<span class="math inline">\(K\)</span>满足</p>
+<p><span class="math display">\[
+ed=K\cdot LCM(p-1,q-1)+1
+\]</span></p>
+<p>如果<span class="math inline">\(G=\gcd(p-1,q-1)\)</span>，有<span
+class="math inline">\(LCM(p-1,q-1)=(p-1)(q-1)/G\)</span>，可以得到</p>
+<p><span class="math display">\[
+ed=\frac{K}{G}(p-1)(q-1)+1
+\]</span></p>
+<p>其中<span class="math inline">\(K\)</span>和<span
+class="math inline">\(G\)</span>有比较大的概率是有公因数的，那么我们定义<span
+class="math inline">\(k=K/\gcd(K,G)\)</span>，<span
+class="math inline">\(g=G/\gcd(K,G)\)</span>，就有<span
+class="math inline">\(k/g=K/G\)</span>，且<span
+class="math inline">\(\gcd(k,g)=1\)</span>，这样子就会得到：</p>
+<p><span class="math display">\[
+ed=\frac{k}{g}(p-1)(q-1)+1
+\]</span></p>
+<p>在等式两边同时除以<span
+class="math inline">\(dpq\)</span>能够得到</p>
+<p><span class="math display">\[
+\frac{e}{pq}=\frac{k}{dg}(1-\delta),\
+\delta=\frac{p+q-1-\frac{g}{k}}{pq}
+\]</span></p>
+<p>这条式子可以构造前面连分数的形式。考虑到<span
+class="math inline">\(\gcd(K,d)=1,\gcd(k,d)=1,\gcd(k,g)=1\)</span>，能够得出，</p>
+<p><span class="math display">\[
+kdg&lt;\frac{pq}{\frac{3}{2}(p+q)}
+\]</span></p>
+<p>这足够能计算出<span class="math inline">\(k\)</span>和<span
+class="math inline">\(dg\)</span>。</p>
+<p>我们可以假设<span
+class="math inline">\(ed&gt;pq\)</span>，在这种情况下，有</p>
+<p><span class="math display">\[
+edg=k(p-1)(q-1)+g
+\]</span></p>
+<p>对于<span class="math inline">\(k&gt;g\)</span>，两边同时除以<span
+class="math inline">\(k(k&gt;g)\)</span>能够得到<span
+class="math inline">\((p-1)(q-1)\)</span>和一个余数<span
+class="math inline">\(g\)</span>。如果能够猜测出<span
+class="math inline">\((p-1)(q-1)\)</span>，那么</p>
+<p><span class="math display">\[
+\frac{pq-(p-1)(q-1)+1}{2}=\frac{p+q}{2}
+\]</span></p>
+<p>如果上面等式右边不是整数，那么上面的猜测就是错误的。此外又有</p>
+<p><span class="math display">\[
+(\frac{p+q}{2})^2-pq=(\frac{p-q}{2})^2
+\]</span></p>
+<p>如果等式右边是一个完美平方数，那么猜测就是正确的。从这正确的猜测中就能够得到私钥指数<span
+class="math inline">\(d\)</span>。</p>
+<h1 id="参考资料">参考资料</h1>
+<p>【1】 M. J. Wiener, "Cryptanalysis of short RSA secret exponents," in
+IEEE Transactions on Information Theory, vol. 36, no. 3, pp. 553-558,
+May 1990, doi: 10.1109/18.54902.</p>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+    </article>
+    <!-- license -->
     
-        
-        
-        
-        
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
             
+        </li>
+        <li class="previous">
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2022/02/10/re-review2/">
-                
-                <span class="abstract-title-text">ELF格式学习</span>
-            </a>
-            <div class="abstract-content">
-                ELF文件结构。
-            </div>
-            <!-- read more -->
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2022/02/23/mpc-2-gc/" title="安全多方计算——乱码电路协议">
+                    <div class="prevTitle">安全多方计算——乱码电路协议</div>
+                </a>
             
-                <div class="abstract-read-more-button">
-                    <a href="/2022/02/10/re-review2/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/02/12">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/02/10</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
+        </li>
+    </ul>
+    <!-- comment -->
     
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="二进制"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                二进制
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="逆向工程">逆向工程</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="ELF">ELF</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="x86">x86</a>
-    
-</div>
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2022/01/20/re-review1/">
-                
-                <span class="abstract-title-text">IA32内存、寄存器、数据</span>
-            </a>
-            <div class="abstract-content">
-                IA32体系结构的内存管理和分配，寄存器、数据存储类型。实际上是为了期末考试而恶补。
-            </div>
-            <!-- read more -->
-            
-                <div class="abstract-read-more-button">
-                    <a href="/2022/01/20/re-review1/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/02/12">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/01/20</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="二进制"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                二进制
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="逆向工程">逆向工程</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="x86架构">x86架构</a>
-    
-</div>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+        </div>
     
-    <!-- paginator  -->
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+        
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+
+
     
 </main>
 
@@ -701,6 +894,23 @@
 
         </div>
         <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%BF%9E%E5%88%86%E6%95%B0"><span class="toc-number">1.</span> <span class="toc-text">连分数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%BF%9E%E5%88%86%E6%95%B0%E7%AE%97%E6%B3%95"><span class="toc-number">2.</span> <span class="toc-text">连分数算法</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#rsa"><span class="toc-number">3.</span> <span class="toc-text">RSA</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">4.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
         
         <!-- sidebar -->
         <div class="sidebar sidebar-hide">
@@ -1097,7 +1307,16 @@
         
         <!-- async load share.js -->
         
+            <script src="/scripts/share.js?v=20210823" async></script>
+        
         <!-- mermaid -->
+        
+            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
+            <script>
+                if (window.mermaid) {
+                    mermaid.initialize({theme: 'dark'});
+                }
+            </script>
         
     </body>
 </html>
