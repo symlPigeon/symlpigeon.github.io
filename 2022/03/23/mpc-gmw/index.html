@@ -19,20 +19,23 @@
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
     <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
-    <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
-<meta property="og:type" content="website">
-<meta property="og:title" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:url" content="http://symlpigeon.github.io/page/2/index.html">
+    <meta name="description" content="正文 GMW协议最早是在论文How to play any mental game中由Goldreich, Micali和Wigderson提出。这是一个可以在算术电路和不二电路中实现的安全计算协议，也可以比较容易地拓展到多方安全计算的领域。 在2PC的场景下，我们假设存在两个安全计算的参与方\(P_1,P_2\)，他们各自持有一个秘密输入\(x,y\)。一个需要计算的函数\(\mathcal{F">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多方安全计算——GMW协议">
+<meta property="og:url" content="http://symlpigeon.github.io/2022/03/23/mpc-gmw/index.html">
 <meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
+<meta property="og:description" content="正文 GMW协议最早是在论文How to play any mental game中由Goldreich, Micali和Wigderson提出。这是一个可以在算术电路和不二电路中实现的安全计算协议，也可以比较容易地拓展到多方安全计算的领域。 在2PC的场景下，我们假设存在两个安全计算的参与方\(P_1,P_2\)，他们各自持有一个秘密输入\(x,y\)。一个需要计算的函数\(\mathcal{F">
 <meta property="og:locale">
+<meta property="article:published_time" content="2022-03-23T08:32:00.000Z">
+<meta property="article:modified_time" content="2022-03-23T14:16:44.785Z">
 <meta property="article:author" content="symlPigeon">
+<meta property="article:tag" content="MPC">
 <meta name="twitter:card" content="summary">
     <meta http-equiv="Cache-control" content="no-cache">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <link rel="icon" href="/assets/favicon.ico">
     
-    <title>syml&#39;s little gensokyo</title>
+    <title>多方安全计算——GMW协议 · syml&#39;s little gensokyo</title>
     <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
 /* This file is meant as a standalone workflow for
 - testing support for link[rel=preload]
@@ -219,11 +222,6 @@
         </script>
     
     
-        <!-- google search console verification -->
-        
-            <meta name="google-site-verification" content=ZTJV7LmnjnAU0rDyvzCr7TRRA440DNEQPOSHt9OiYLE />
-        
-    
 <!-- hexo injector head_end start -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
 
@@ -238,10 +236,10 @@
         }
     </script>
     
-        <body class="home-body">
+        <body class="post-body">
     
         <!-- header -->
-        <header class="header-page header-page-mobile index-header">
+        <header class="header-page header-page-mobile">
     <!-- top read progress line -->
     <div class="header-element">
         <div class="read-progress"></div>
@@ -269,10 +267,21 @@
     </div>
     <!-- toggle banner for post layout -->
     
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">symlpigeon&#39;s little gensokyo</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">多方安全计算——GMW协议</a>
+            </div>
+        </div>
+    
 </header>
 
         <!-- fixed footer -->
-        <footer class="footer-fixed index-footer-fixed">
+        <footer class="footer-fixed">
     <!-- back to top button -->
     <div class="footer-fixed-element">
         
@@ -302,17 +311,17 @@
     <!-- 主页  -->
     
         
-    <!-- 文章页  -->
+    <!-- 404页  -->
             
     <div class="site-intro-placeholder"></div>
-    <div class="site-intro-img" style="background-image: url(/intro/index-bg.jpg)"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
     <div class="site-intro-meta">
         <!-- 标题  -->
         <h1 class="intro-title">
             <!-- 主页  -->
             
-                symlpigeon's little gensokyo
-            <!-- 文章页  -->
+                多方安全计算——GMW协议
+            <!-- 404 -->
             
         </h1>
         <!-- 副标题 -->
@@ -320,12 +329,66 @@
             <!-- 主页副标题  -->
             
                 
-                    夢違え、幻の朝靄の世界の記憶を
-                
-            <!-- 文章页  -->
+            <!-- 404 -->
             
         </p>
         <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="密码学"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                密码学
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="MPC">MPC</a>
+    
+</div>
+
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">1.3k</span>阅读时长: <span class="post-count reading-time">5 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/03/23</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
         
     </div>
 </div>
@@ -455,314 +518,179 @@
 
             <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
             <div class="container container-unloaded">
-                <main class="main index-page">
-    
-        
-        
-        
-        
-            
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2021/12/09/aes-ecb-attack/">
-                
-                <span class="abstract-title-text">Byte-at-a-time ECB Decryption</span>
-            </a>
-            <div class="abstract-content">
-                AES ECB模式的Byte-at-a-time攻击
-            </div>
-            <!-- read more -->
-            
-                <div class="abstract-read-more-button">
-                    <a href="/2021/12/09/aes-ecb-attack/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/02/11">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2021/12/09</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="密码学"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                密码学
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="对称密码">对称密码</a>
-    
-</div>
+                <main class="main post-page">
+    <article class="article-entry">
+        <h1 id="正文">正文</h1>
+<p>GMW协议最早是在论文<em>How to play any mental
+game</em>中由<em>Goldreich,
+Micali和Wigderson</em>提出。这是一个可以在算术电路和不二电路中实现的安全计算协议，也可以比较容易地拓展到多方安全计算的领域。</p>
+<p>在2PC的场景下，我们假设存在两个安全计算的参与方<span
+class="math inline">\(P_1,P_2\)</span>，他们各自持有一个秘密输入<span
+class="math inline">\(x,y\)</span>。一个需要计算的函数<span
+class="math inline">\(\mathcal{F}(x,y)\)</span>，对应了一个布尔电路<span
+class="math inline">\(\mathcal C\)</span>。</p>
+<p>首先，参与方<span class="math inline">\(P_1\)</span>对于自己秘密<span
+class="math inline">\(x\in\{0,1\}^n\)</span>中的每一个比特<span
+class="math inline">\(x_i\)</span>，都选择一个随机比特掩码<span
+class="math inline">\(r_i\in_R\{0,1\}\)</span>，计算<span
+class="math inline">\(x_i\oplus
+r_i\)</span>作为自己的新秘密比特，接下来，参与方<span
+class="math inline">\(P_1\)</span>将自己的掩码比特<span
+class="math inline">\(r_i,i\in\{1,2,...,n\}\)</span>发送给参与方<span
+class="math inline">\(P_2\)</span>。</p>
+<p>同样的，<span
+class="math inline">\(P_2\)</span>也进行了类似的操作，选取随机比特掩码<span
+class="math inline">\(r&#39;\)</span>对自己的秘密<span
+class="math inline">\(y\)</span>进行异或并将结果作为新的秘密，同时将选取的随机比特掩码发送给参与方<span
+class="math inline">\(P_1\)</span>。</p>
+<p>经过了上面这样的过程，两个参与方<span
+class="math inline">\(P_1,P_2\)</span>相当于和对方进行了秘密共享——只有同时得到参与方<span
+class="math inline">\(P_1\)</span>的秘密份额<span
+class="math inline">\(x_i\oplus r_i\)</span>和参与方拥有的秘密份额<span
+class="math inline">\(r_i\)</span>才能够还原秘密比特<span
+class="math inline">\(x_i\)</span>。</p>
+<p>接下来，双方共同计算布尔电路<span class="math inline">\(\mathcal
+C\)</span>。</p>
+<p>对于电路中某个门电路的输入，在先前的混淆电路中，双方是通过乱码表来实现计算。我们假设一个门电路的输入导线<span
+class="math inline">\(w_i,w_j\)</span>由双方分别持有，导线对应的取值可以是0或1，那么这里就需要构造一个乱码表，并且通过标识置换和不经意传输协议由一方告知另外一方足够的数据以进行计算。</p>
+<p>在GMW中采用的是一种不同的方式。我们可以假设GMW协议需要计算的布尔电路中使用了XOR，NOT和AND三种门电路。</p>
+<p>先看非门，这个简单。</p>
+<p>NOT门对于输入导线的取值<span
+class="math inline">\(w_i\in\{0,1\}\)</span>，输出的结果会是<span
+class="math inline">\(\overline{w_i}\)</span>。</p>
+<p>因为双方实现了秘密共享，也就是说一个原本的秘密<span
+class="math inline">\(w_i\)</span>被分割为了<span
+class="math inline">\(s_i^1,s_i^2\)</span>分别由<span
+class="math inline">\(P_1,P_2\)</span>持有（当然前面只对输入秘密进行了分享，没有对中间过程的导线进行操作，不过先暂且当作已经做过了吧）。这样子的话，我们可以看一下这个等式：</p>
+<p><span class="math display">\[
+\begin{aligned}
+&amp;w_i=s_i^1\oplus s_i^2\\[2ex]
+&amp;w_k=\overline{w_i}=\overline{s_i^1\oplus
+s_i^2}=\overline{s_i^1}\oplus \overline{s_i^2}
+\end{aligned}
+\]</span></p>
+<p>也就是说，如果我们需要计算一个非门的输出结果，只需要参与双方各自把自己持有的秘密值取反就行了。</p>
+<p>接下来是异或门。</p>
+<p>同样的对于异或门的两个输入秘密<span
+class="math inline">\(w_i\)</span>和<span
+class="math inline">\(w_j\)</span>，我们将它们分别分割成两个秘密份额即<span
+class="math inline">\(w_i=s_i^1\oplus s_i^2\)</span>和<span
+class="math inline">\(w_j=s_j^1\oplus s_j^2\)</span>。</p>
+<p>异或门需要计算的结果就是<span class="math inline">\(w_k=w_i\oplus
+w_j=(s_i^1\oplus s_i^2)\oplus(s_j^1\oplus s_j^2)=(s_i^1\oplus
+s_j^1)\oplus(s_i^2\oplus
+s_j^2)\)</span>。也就是说，参与协议的两方可以各自计算自己两个秘密份额的异或值，得到的结果相当于异或门输出结果的一个份额。</p>
+<p>比较复杂的部分在于与门的实现。</p>
+<p>我们可以从<span
+class="math inline">\(P_1\)</span>所持有的数据来看，<span
+class="math inline">\(P_1\)</span>有的秘密份额是输入导线<span
+class="math inline">\(w_i\)</span>的份额<span
+class="math inline">\(s_i^1\)</span>和输入导线<span
+class="math inline">\(w_j\)</span>的份额<span
+class="math inline">\(s_j^1\)</span>。那么<span
+class="math inline">\(P_1\)</span>就可以猜测<span
+class="math inline">\(P_2\)</span>所持有的秘密份额分别是多少，也就是有四种可能：<code>00, 01, 10, 11</code>。这样子，<span
+class="math inline">\(P_0\)</span>可以事先计算出这四种可能的结果<span
+class="math inline">\(S\)</span>，即：</p>
+<p><span class="math display">\[
+S=S_{s_i^1,s_j^1}(s_i^2,s_j^2)=(s_i^1\oplus s_i^2)\land(s_j^1\oplus
+s_j^2)
+\]</span></p>
+<p>其中<span class="math inline">\(s_i^2,s_j^2\)</span>是<span
+class="math inline">\(P_2\)</span>可能持有的秘密份额。</p>
+<p>理论上这里<span class="math inline">\(P_1\)</span>和<span
+class="math inline">\(P_2\)</span>直接通过一个4选1-OT协议就可以让<span
+class="math inline">\(P_2\)</span>知道实际的秘密份额，但是这样便会暴露<span
+class="math inline">\(P_1\)</span>的秘密份额（而且<span
+class="math inline">\(P_1\)</span>还不知道结果），因此我们需要一个更复杂的方法。</p>
+<p><span class="math inline">\(P_1\)</span>这时候选择一个随机数<span
+class="math inline">\(r\)</span>，计算<span
+class="math inline">\(S\oplus r\)</span>，一共得到四个结果，也就是：</p>
+<p><span class="math display">\[
+\begin{aligned}
+S_{s_i^1,s_j^1}(0,0)\oplus r\\[2ex]
+S_{s_i^1,s_j^1}(0,1)\oplus r\\[2ex]
+S_{s_i^1,s_j^1}(1,0)\oplus r\\[2ex]
+S_{s_i^1,s_j^1}(1,1)\oplus r
+\end{aligned}
+\]</span></p>
+<p>这样，双方通过一个4选1-OT协议，<span
+class="math inline">\(P_2\)</span>就能够得到秘密份额<span
+class="math inline">\(S_{s_i^1,s_j^1}(s_i^2,s_j^2)\oplus
+r\)</span>，而<span
+class="math inline">\(P_1\)</span>的秘密份额就是<span
+class="math inline">\(r\)</span>，双方也无法去了解对方的份额是多少（<span
+class="math inline">\(P_1\)</span>不能知道OT选了到底哪一个）。</p>
+<p>实际上或门的实现也可以采用类似的方法。</p>
+<p>在计算的最后，双方可以向对方披露自己计算的结果的秘密份额，这样就可以还原出计算的结果。</p>
+<h1 id="参考">参考</h1>
+<p>[1] David Evans; Vladimir Kolesnikov; Mike Rosulek, A Pragmatic
+Introduction to Secure Multi-Party Computation , now, 2018.</p>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+    </article>
+    <!-- license -->
     
-        
-        
-        
-        
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
             
+        </li>
+        <li class="previous">
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2021/12/06/CVE-2021-39503/">
-                
-                <span class="abstract-title-text">CVE-2021-39503复现</span>
-            </a>
-            <div class="abstract-content">
-                之前帮别人写的Web安全结课作业，一个基本上已经停止维护的平台上面的弱智的RCE漏洞。
-            </div>
-            <!-- read more -->
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2022/03/16/wiener-attack/" title="Wiener's Attack">
+                    <div class="prevTitle">Wiener's Attack</div>
+                </a>
             
-                <div class="abstract-read-more-button">
-                    <a href="/2021/12/06/CVE-2021-39503/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/02/11">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2021/12/06</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
+        </li>
+    </ul>
+    <!-- comment -->
     
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="Web安全"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                Web安全
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Web">Web</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="RCE">RCE</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="PHP">PHP</a>
-    
-</div>
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2021/12/03/sm2/">
-                
-                <span class="abstract-title-text">国密SM2算法学习</span>
-            </a>
-            <div class="abstract-content">
-                国密SM2算法的，简单的介绍……
-            </div>
-            <!-- read more -->
-            
-                <div class="abstract-read-more-button">
-                    <a href="/2021/12/03/sm2/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2022/02/11">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2021/12/03</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="密码学"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                密码学
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="SM2">SM2</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="椭圆曲线">椭圆曲线</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="数论">数论</a>
-    
-</div>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
     
         
-        
-        
-        
-            
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2021/12/03/HelloWorld/">
-                
-                <span class="abstract-title-text">HelloWorld</span>
-            </a>
-            <div class="abstract-content">
-                HelloWorld
-            </div>
-            <!-- read more -->
-            
-                <div class="abstract-read-more-button">
-                    <a href="/2021/12/03/HelloWorld/">
-                        <span style="margin-right: 0.2rem;">阅读全文</span>
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </div>
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2021/12/03">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2021/12/03</span>
-                </div>
-                <!-- tags -->
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-    <!-- paginator  -->
-    
-        <nav class="page-nav">
-            <a class="extend prev" rel="prev" href="/">&lt; PREV</a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
-        </nav>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+
+
     
 </main>
 
                 <!-- profile -->
-                
-                    <div class="profile">
-    <img class="profile-avatar" alt="avatar" src= /avatar/user-pic.png />
-    <div class="profile-name">神隐陌路  symlPigeon</div>
-    
-        <div class="profile-signature">
-            Welcome to my gensokyo.
-        </div>
-    
-    
-        <div class="profile-social">
-            
-    
-        
-            
-                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
-            
-        
-    
-        
-            
-                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
-            
-        
-    
-        
-            
-                <span class="iconfont-archer qq" title=qq>
-                    
-                    <img class="profile-qr" src="/assets/qq.png" />
-                </span>
-            
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-            
-                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
-            
-        
-    
-        
-    
-        
-    
-
-
-        </div>
-    
-    
-    
-        <div class="profile-link-item">
-            <a href="/about" class="about-me">
-                
-                    <i class="fas fa-id-card profile-item-icon"></i>
-                
-                ABOUT ME
-            </a>
-        </div>
-    
-    
-    
-</div>
-
                 
             </div>
             <footer class="footer footer-unloaded">
@@ -851,6 +779,23 @@
 
         </div>
         <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%AD%A3%E6%96%87"><span class="toc-number">1.</span> <span class="toc-text">正文</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83"><span class="toc-number">2.</span> <span class="toc-text">参考</span></a></li></ol>
+            </div>
         
         <!-- sidebar -->
         <div class="sidebar sidebar-hide">
@@ -1266,7 +1211,16 @@
         
         <!-- async load share.js -->
         
+            <script src="/scripts/share.js?v=20210823" async></script>
+        
         <!-- mermaid -->
+        
+            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
+            <script>
+                if (window.mermaid) {
+                    mermaid.initialize({theme: 'dark'});
+                }
+            </script>
         
     </body>
 </html>
