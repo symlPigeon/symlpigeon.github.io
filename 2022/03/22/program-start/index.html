@@ -18,7 +18,6 @@
     
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
-    <meta name="description" content="计算机、数学、人生还有碎碎念，网络中的一片个人保留地。">
     <meta name="description" content="之前偶尔写一些逆向的时候总会看到IDA反汇编出来的函数列表里面有_start这样的奇奇怪怪的函数，在调试的时候main函数return之后也会到一些奇奇怪怪的地方去。感觉是应该去把这些东西给理一下了。 程序的启动和execve 我们在shell中执行一个程序的时候，Linux内核会去装载这个程序并且去执行。 按照以前所学的shell的实现，当在终端中输入了一条命令之后，shell会进行fork()">
 <meta property="og:type" content="article">
 <meta property="og:title" content="关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果">
@@ -33,9 +32,10 @@
 <meta property="og:image" content="http://symlpigeon.github.io/2022/03/22/program-start/start-dbg4.jpg">
 <meta property="og:image" content="http://symlpigeon.github.io/2022/03/22/program-start/callgraph.png">
 <meta property="article:published_time" content="2022-03-22T08:46:07.000Z">
-<meta property="article:modified_time" content="2022-03-24T11:07:13.816Z">
+<meta property="article:modified_time" content="2022-03-27T04:18:11.920Z">
 <meta property="article:author" content="symlPigeon">
 <meta property="article:tag" content="ELF">
+<meta property="article:tag" content="Linux">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://symlpigeon.github.io/2022/03/22/program-start/start-dbg1.jpg">
     <meta http-equiv="Cache-control" content="no-cache">
@@ -360,6 +360,8 @@
     
     
         <a class="post-tag" href="javascript:void(0);" data-tags="ELF">ELF</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux">Linux</a>
     
 </div>
 
@@ -1017,24 +1019,6 @@ http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html</p>
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
     
     
     
@@ -1154,26 +1138,6 @@ http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html</p>
         <div class="sidebar-panel-tags">
     <div class="sidebar-tags-name">
         
-            <span class="sidebar-tag-name" data-tags="逆向工程">
-                <span class="iconfont-archer">&#xe606;</span>
-                逆向工程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="x86架构">
-                <span class="iconfont-archer">&#xe606;</span>
-                x86架构
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="ELF">
-                <span class="iconfont-archer">&#xe606;</span>
-                ELF
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="x86">
-                <span class="iconfont-archer">&#xe606;</span>
-                x86
-            </span>
-        
             <span class="sidebar-tag-name" data-tags="漏洞复现">
                 <span class="iconfont-archer">&#xe606;</span>
                 漏洞复现
@@ -1184,14 +1148,34 @@ http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html</p>
                 对称密码和安全
             </span>
         
-            <span class="sidebar-tag-name" data-tags="多方安全计算">
+            <span class="sidebar-tag-name" data-tags="ELF">
                 <span class="iconfont-archer">&#xe606;</span>
-                多方安全计算
+                ELF
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="逆向工程">
+                <span class="iconfont-archer">&#xe606;</span>
+                逆向工程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="x86">
+                <span class="iconfont-archer">&#xe606;</span>
+                x86
             </span>
         
             <span class="sidebar-tag-name" data-tags="公钥密码和数学">
                 <span class="iconfont-archer">&#xe606;</span>
                 公钥密码和数学
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="安全多方计算">
+                <span class="iconfont-archer">&#xe606;</span>
+                安全多方计算
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux
             </span>
         
     </div>
