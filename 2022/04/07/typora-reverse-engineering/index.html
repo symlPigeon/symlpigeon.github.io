@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="symlPigeon">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="symlPigeon">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="《信息网络传播权保护条例》第十八条、第十九条规定：“任何人不得故意避开、破坏或故意制造、向他人提供主要用于避开、破坏技术措施的装置或者部件，或者故意为他人避开或者破坏技术措施提供技术服务的，否则需要承担相应的民事责任、行政责任及刑事责任; 《计算机软件保护条例》第十四条规定:未经软件著作权人许可，不得故意避开或者破坏著作权人为保护其软件著作权而采取的技术措施的，否则需要承担相应的民事责任、行政责">
+<meta property="og:type" content="article">
+<meta property="og:title" content="针对Typora的逆向分析">
+<meta property="og:url" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/index.html">
+<meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
+<meta property="og:description" content="《信息网络传播权保护条例》第十八条、第十九条规定：“任何人不得故意避开、破坏或故意制造、向他人提供主要用于避开、破坏技术措施的装置或者部件，或者故意为他人避开或者破坏技术措施提供技术服务的，否则需要承担相应的民事责任、行政责任及刑事责任; 《计算机软件保护条例》第十四条规定:未经软件著作权人许可，不得故意避开或者破坏著作权人为保护其软件著作权而采取的技术措施的，否则需要承担相应的民事责任、行政责">
+<meta property="og:locale">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/typora-active.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/base64-atom.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/b64-decode.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/main-node-die.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/find-crypto.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/active_typora.jpg">
+<meta property="og:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/crack.jpg">
+<meta property="article:published_time" content="2022-04-07T03:51:40.000Z">
+<meta property="article:modified_time" content="2022-04-07T12:36:35.307Z">
+<meta property="article:author" content="symlPigeon">
+<meta property="article:tag" content="逆向工程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/typora-active.jpg">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/favicon.ico">
+    
+    <title>针对Typora的逆向分析 · syml&#39;s little gensokyo</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20210823" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20210823" as="style">
+    <link rel="stylesheet" href="/css/dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/css/mobile.css?v=20210823" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20210823" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20210823" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-EDRLRX5SK9');
+        </script>
+    
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><meta name="generator" content="Hexo 5.4.1"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header-page header-page-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>symlpigeon's little gensokyo</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">symlpigeon&#39;s little gensokyo</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">针对Typora的逆向分析</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:50vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                针对Typora的逆向分析
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="二进制"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                二进制
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="逆向工程">逆向工程</a>
+    
+</div>
+
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">4k</span>阅读时长: <span class="post-count reading-time">17 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/04/07</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <blockquote>
+<p>《信息网络传播权保护条例》第十八条、第十九条规定：“任何人不得故意避开、破坏或故意制造、向他人提供主要用于避开、破坏技术措施的装置或者部件，或者故意为他人避开或者破坏技术措施提供技术服务的，否则需要承担相应的民事责任、行政责任及刑事责任;</p>
+<p>《计算机软件保护条例》第十四条规定:未经软件著作权人许可，不得故意避开或者破坏著作权人为保护其软件著作权而采取的技术措施的，否则需要承担相应的民事责任、行政责任及刑事责任。”</p>
+<p>《中华人民共和国刑法》第二百八十六条
+破坏计算机信息系统罪：违反国家规定，对计算机信息系统功能进行删除、修改、增加、干扰，造成计算机信息系统不能正常运行，后果严重的，处五年以下有期徒刑或者拘役；后果特别严重的，处五年以上有期徒刑。</p>
+</blockquote>
+<blockquote>
+<p><strong>此内容仅为学习、交流，请勿非法用途使用！</strong></p>
+</blockquote>
+<p>之前写markdown一直都用的是Typora（当然也会用vscode），后来Typora付费了之后也就买了正版，这次看到有关于这个的逆向分析，也就来了一些兴趣觉得可以做一做。</p>
+<figure>
+<img src="typora-active.jpg" alt="我没白嫖" />
+<figcaption aria-hidden="true">我没白嫖</figcaption>
+</figure>
+<p>实际上这次做这个先是看了相关的逆向分析帖子，所以说整个思路基本上也就是按照人家的来做的。Windows下面和Linux下面的Typora还有些不太一样，这里就拿Windows下面的为例。</p>
+<h1 id="外面的保护">外面的保护</h1>
+<p>我们如果去阅读Electron相关的开发资料也就可以知道，在项目下面的<code>resources/app.asar</code>中间是项目实际运行有关的源码等文件。我们首先要做的也就是要去将这个文件进行解包。参考<code>asar</code>的使用指令，安装了之后这样进行解包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npm install -g asar</span><br><span class="line">asar extract /path/to/app.asar /path/to/extracted</span><br></pre></td></tr></table></figure>
+<p>我们解包之后就会得到三个文件：<code>atom.js</code>，
+<code>main.node</code>，
+<code>package.json</code>。其中<code>package.json</code>是打包有关的内容，我们暂且不需要关。</p>
+<p>打开<code>atom.js</code>文件之后，发现里面是base64格式的编码。</p>
+<p><img src="base64-atom.jpg" /></p>
+<p>用cyberchef之类的工具解码发现还是乱码，看不出什么东西来，很明显是加密之后的内容。</p>
+<figure>
+<img src="b64-decode.jpg" alt="记住Hex的前面一些字节，后面有用" />
+<figcaption
+aria-hidden="true">记住Hex的前面一些字节，后面有用</figcaption>
+</figure>
+<p>那下面要看的也就是<code>main.node</code>，拖进detect it
+easy可以看到这是个64位的动态链接库。</p>
+<p><img src="main-node-die.jpg" /></p>
+<p>理所当然地，拖进IDA。</p>
+<p>直接看也看不出什么东西，包括字符串也找不到什么有用的内容。不过用FindCrypto可以找到一些有趣的东西。</p>
+<p><img src="find-crypto.jpg" /></p>
+<p>这里找到了AES的密码学组件，接下来顺着调用关系向上寻找。以<code>RijnDael_AES_LONG_inv_180056F60</code>为入手点，它在函数<code>sub_180007320</code>中被使用。</p>
+<p>接下来来看这个函数，按照惯例还是F5一下，<code>__int64 __fastcall sub_180007320(unsigned __int8 *a1, __int64 a2)</code>接收两个参数<code>a1</code>和<code>a2</code>。</p>
+<p>这个函数体比较长，我们挑出其中的几段来看：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">v2 = a1;</span><br><span class="line">v3 = a2 - (_QWORD)a1;</span><br><span class="line">v4 = <span class="number">4</span>i64;</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">&#123;</span><br><span class="line">  v5 = <span class="number">4</span>i64;</span><br><span class="line">  <span class="keyword">do</span></span><br><span class="line">  &#123;</span><br><span class="line">    *a1 ^= a1[v3 + <span class="number">224</span>];</span><br><span class="line">    ++a1;</span><br><span class="line">    --v5;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">while</span> ( v5 );</span><br><span class="line">  --v4;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">while</span> ( v4 );</span><br></pre></td></tr></table></figure>
+<p><code>v2</code>取<code>a1</code>的地址，<code>v3</code>取<code>a2</code>的地址减去<code>a1</code>的地址也就是一个偏移量，实际上后面异或语句<code>*a1 ^= a1[v3 + 224];</code>也就是<code>a1[i] ^= a2[i + 224]</code>这样的功能。这一段代码的功能也就是将<code>a1</code>每一个字节和<code>a2</code>的224字节开始的位置进行异或。<code>v2</code>则是起到了一个保存<code>a1</code>的作用，因为<code>a1</code>在循环中被改掉了。</p>
+<p>另外也能看出来这个分组实际上就是16字节，基本上就可以猜出来这是AES的轮密钥加。</p>
+<p>下面这一段代码基本上就能够看出来AES循环的形状：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">v6 = <span class="number">13</span>;</span><br><span class="line">v7 = v3 + <span class="number">208</span>; <span class="comment">// 224 - 16 = 208</span></span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// 轮函数函数体</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">while</span> ( v6 );</span><br></pre></td></tr></table></figure>
+<p>可以看到这个函数执行了13轮循环，也就是AES-256的执行的轮数。<code>v7</code>相较于上一次递减16，这个也就是AES的轮密钥的长度——16字节。
+接下来是轮函数体：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 行移位</span></span><br><span class="line">v8 = v2;</span><br><span class="line">v9 = v2[<span class="number">13</span>];</span><br><span class="line">v10 = <span class="number">4</span>i64;</span><br><span class="line">v2[<span class="number">13</span>] = v2[<span class="number">9</span>];</span><br><span class="line">v2[<span class="number">9</span>] = v2[<span class="number">5</span>];</span><br><span class="line">v2[<span class="number">5</span>] = v2[<span class="number">1</span>];</span><br><span class="line">v11 = v2[<span class="number">10</span>];</span><br><span class="line">v2[<span class="number">1</span>] = v9;</span><br><span class="line">v12 = v2[<span class="number">2</span>];</span><br><span class="line">v2[<span class="number">2</span>] = v11;</span><br><span class="line">v13 = v2[<span class="number">14</span>];</span><br><span class="line">v2[<span class="number">10</span>] = v12;</span><br><span class="line">v14 = v2[<span class="number">6</span>];</span><br><span class="line">v2[<span class="number">6</span>] = v13;</span><br><span class="line">v15 = v2[<span class="number">7</span>];</span><br><span class="line">v2[<span class="number">14</span>] = v14;</span><br><span class="line">v16 = v2[<span class="number">3</span>];</span><br><span class="line">v2[<span class="number">3</span>] = v15;</span><br><span class="line">v2[<span class="number">7</span>] = v2[<span class="number">11</span>];</span><br><span class="line">v2[<span class="number">11</span>] = v2[<span class="number">15</span>];</span><br><span class="line">v2[<span class="number">15</span>] = v16;</span><br><span class="line"><span class="comment">// 字节替换</span></span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">&#123;</span><br><span class="line">  v17 = v8;</span><br><span class="line">  v18 = <span class="number">4</span>i64;</span><br><span class="line">  <span class="keyword">do</span></span><br><span class="line">  &#123;</span><br><span class="line">    v19 = *v17;</span><br><span class="line">    v17 += <span class="number">4</span>;</span><br><span class="line">    *(v17 - <span class="number">4</span>) = RijnDael_AES_LONG_inv_180056F60[v19];</span><br><span class="line">    --v18;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">while</span> ( v18 );</span><br><span class="line">  ++v8;</span><br><span class="line">  --v10;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">while</span> ( v10 );</span><br><span class="line"><span class="comment">// 轮密钥加</span></span><br><span class="line">v20 = v2;</span><br><span class="line">v21 = <span class="number">4</span>i64;</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">&#123;</span><br><span class="line">  v22 = <span class="number">4</span>i64;</span><br><span class="line">  <span class="keyword">do</span></span><br><span class="line">  &#123;</span><br><span class="line">    *v20 ^= v20[v7];</span><br><span class="line">    ++v20;</span><br><span class="line">    --v22;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">while</span> ( v22 );</span><br><span class="line">  --v21;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">while</span> ( v21 );</span><br><span class="line"><span class="comment">// 列混合</span></span><br><span class="line">sub_180007540(v2);</span><br><span class="line">v7 -= <span class="number">16</span>i64;</span><br><span class="line">--v6;</span><br></pre></td></tr></table></figure>
+<p>其中调用的<code>sub_180007540</code>函数是进行的列混合操作，可以从伪代码中看出来，这里就不放上来了。</p>
+<p>可以看出来这个函数实际上就是AES-256的解密过程。</p>
+<p>继续向上一级，<code>__int64 __fastcall sub_180006AC0(__int64 a1, unsigned __int8 *a2, unsigned int a3)</code>这个函数。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">__int64 __fastcall <span class="title">sub_180006AC0</span><span class="params">(__int64 a1, <span class="keyword">unsigned</span> __int8 *a2, <span class="keyword">unsigned</span> <span class="keyword">int</span> a3)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">unsigned</span> __int8 *v3; <span class="comment">// rbx</span></span><br><span class="line">  __int64 v5; <span class="comment">// rdi</span></span><br><span class="line">  <span class="keyword">unsigned</span> __int64 v6; <span class="comment">// rsi</span></span><br><span class="line">  __int128 v7; <span class="comment">// xmm0</span></span><br><span class="line">  __int64 v8; <span class="comment">// rcx</span></span><br><span class="line">  __int64 result; <span class="comment">// rax</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> ( a3 ) <span class="comment">// 密文总长度</span></span><br><span class="line">  &#123;</span><br><span class="line">    v3 = a2;</span><br><span class="line">    v5 = a1 + <span class="number">240</span> - (_QWORD)a2;</span><br><span class="line">    v6 = (((<span class="keyword">unsigned</span> __int64)a3 - <span class="number">1</span>) &gt;&gt; <span class="number">4</span>) + <span class="number">1</span>; <span class="comment">// block size = 16</span></span><br><span class="line">    <span class="keyword">do</span></span><br><span class="line">    &#123;</span><br><span class="line">      v7 = *(_OWORD *)v3;</span><br><span class="line">      aes_ecb_decrypt(v3, a1); <span class="comment">// 前面的解密函数</span></span><br><span class="line">      v8 = <span class="number">16</span>i64;              <span class="comment">// block size = 16</span></span><br><span class="line">      <span class="keyword">do</span></span><br><span class="line">      &#123;</span><br><span class="line">        result = v3[v5];       <span class="comment">// 分块将密文解密后的结果和上一块异或</span></span><br><span class="line">        *v3++ ^= result;       <span class="comment">// 经典的CBC模式</span></span><br><span class="line">        --v8;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">while</span> ( v8 );</span><br><span class="line">      v5 -= <span class="number">16</span>i64;</span><br><span class="line">      *(_OWORD *)(a1 + <span class="number">240</span>) = v7;</span><br><span class="line">      --v6;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span> ( v6 );</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看出来这个函数实际上就是AES-CBC模式的解密函数。第一个参数<code>a1</code>是所有的轮密钥，第二个参数<code>a2</code>是指向密文/明文的指针，第三个参数<code>a3</code>是密文总长度。</p>
+<p>继续向上一级查看。上一级是<code>sub_180003E40</code>函数，这个函数非常的长。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">......</span><br><span class="line">v6 = *a2;</span><br><span class="line"><span class="keyword">if</span> ( (<span class="keyword">unsigned</span> <span class="keyword">int</span>)napi_get_named_property(*a2, Block, <span class="string">&quot;Buffer&quot;</span>, &amp;v29) )</span><br><span class="line">&#123;</span><br><span class="line">  sub_180003250(v42, v6);</span><br><span class="line">  CxxThrowException(v42, (_ThrowInfo *)&amp;_TI4_AVError_Napi__);</span><br><span class="line">&#125;</span><br><span class="line">v7 = v29;</span><br><span class="line">v27 = *(_QWORD *)(a3 + <span class="number">8</span>);</span><br><span class="line">v8 = *a2;</span><br><span class="line"><span class="keyword">if</span> ( (<span class="keyword">unsigned</span> <span class="keyword">int</span>)napi_create_string_utf8(*a2, <span class="string">&quot;base64&quot;</span>, <span class="number">6</span>i64, &amp;v25) )</span><br><span class="line">&#123;</span><br><span class="line">  sub_180003250(v42, v8);</span><br><span class="line">  CxxThrowException(v42, (_ThrowInfo *)&amp;_TI4_AVError_Napi__);</span><br><span class="line">&#125;</span><br><span class="line">v28 = v25;</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>函数最开始是这样的一段代码，基本上可以看出来是调用了node js
+API进行了读取和base64解码的操作，操作的结果也就存储在了<code>Block</code>中。</p>
+<p>向下寻找调用上面AES CBC解密的部分：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">char</span> v45[<span class="number">256</span>]; <span class="comment">// [rsp+1C0h] [rbp+C0h] BYREF</span></span><br><span class="line">......</span><br><span class="line">sub_18000B060(Block, *v12, v13); <span class="comment">// 改名叫做spec_func吧</span></span><br><span class="line">sub_180007000(v45, v32, v10);</span><br><span class="line">aes_cbc_decrypt((__int64)v45, (<span class="keyword">unsigned</span> __int8 *)Block, v13);</span><br></pre></td></tr></table></figure>
+<p>在调用了<code>aes_cbc_decrypt</code>之前，先执行了<code>sub_180007000</code>这个函数，并且这个函数的一个参数<code>v45</code>是作为解密密钥传进去的，所以说<code>sub_180007000</code>大概率是轮密钥的生成函数。这里在该函数处下断点，通过IDA动态调试。</p>
+<p>然而这里和分析有出入的地方在于，查看内存里面的信息发现aes_cbc_decrypt执行之后，<code>Block</code>里面并不是<code>atom.js</code>的明文。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">spec_func((__m128i *)v32, &amp;v46, <span class="number">0x20</span>ui64);</span><br><span class="line">v33 = v11;</span><br><span class="line">v12 = (<span class="keyword">const</span> __m128i **)sub_7FFDEBB85C00(&amp;v30, &amp;v27);</span><br><span class="line">v13 = (<span class="keyword">char</span> *)v12[<span class="number">1</span>] - (<span class="keyword">char</span> *)*v12;</span><br><span class="line">Block = <span class="keyword">operator</span> <span class="keyword">new</span>(v13);</span><br><span class="line">spec_func((__m128i *)Block, *v12, v13);</span><br><span class="line">sub_7FFDEBB87000((__int64)v45, (__int64)v32, v10);</span><br><span class="line">aes_cbc_decrypt((__int64)v45, (<span class="keyword">unsigned</span> __int8 *)Block, v13);</span><br><span class="line">v14 = (__m128i *)<span class="keyword">operator</span> <span class="keyword">new</span>(v13 + <span class="number">1</span>);</span><br><span class="line">spec_func(v14, (<span class="keyword">const</span> __m128i *)Block, v13);  <span class="comment">//&lt;---到这里之后才是v14里面是明文</span></span><br></pre></td></tr></table></figure>
+<p>进入<code>spec_func(__m128i *a1, const __m128i *a2, unsigned __int64 a3)</code>里面的话，这里是将参数<code>a2</code>指向的数据存入<code>a1</code>指向的数据。</p>
+<p>这样子我们再回头看这几个函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">spec_func((__m128i *)v32, &amp;v46, <span class="number">0x20</span>ui64);<span class="comment">// &lt;--将v46存放的Key放入v32</span></span><br><span class="line">v33 = v11;</span><br><span class="line">v12 = (<span class="keyword">const</span> __m128i **)sub_7FFDEBB85C00(&amp;v30, &amp;v27);</span><br><span class="line">v13 = (<span class="keyword">char</span> *)v12[<span class="number">1</span>] - (<span class="keyword">char</span> *)*v12;</span><br><span class="line">Block = <span class="keyword">operator</span> <span class="keyword">new</span>(v13);</span><br><span class="line">spec_func((__m128i *)Block, *v12, v13); </span><br><span class="line">sub_7FFDEBB87000((__int64)v45, (__int64)v32, v10); <span class="comment">// &lt;--轮密钥派生</span></span><br><span class="line">aes_cbc_decrypt((__int64)v45, (<span class="keyword">unsigned</span> __int8 *)Block, v13); <span class="comment">// &lt;--解密</span></span><br><span class="line">v14 = (__m128i *)<span class="keyword">operator</span> <span class="keyword">new</span>(v13 + <span class="number">1</span>);</span><br><span class="line">spec_func(v14, (<span class="keyword">const</span> __m128i *)Block, v13);  <span class="comment">//&lt;---到这里之后才是v14里面是明文</span></span><br></pre></td></tr></table></figure>
+<p>我们导出<code>v46</code>中存放的数据：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> file, fname, i, address, size, x;</span><br><span class="line">address = <span class="comment">/* &amp;v46 */</span>;</span><br><span class="line">size = <span class="number">32</span>;</span><br><span class="line">fname = <span class="string">&quot;C:\\Users\\syml\\Desktop\\typora-crack\\key.txt&quot;</span>;</span><br><span class="line">file = fopen(fname, <span class="string">&quot;wb&quot;</span>);</span><br><span class="line"><span class="keyword">for</span> (i=<span class="number">0</span>; i&lt;size; i++, address++)</span><br><span class="line">&#123;</span><br><span class="line"> x = DbgByte(address);</span><br><span class="line"> fputc(x, file);</span><br><span class="line">&#125;</span><br><span class="line">fclose(file);</span><br></pre></td></tr></table></figure>
+<p>CBC模式的IV是密文的前16字节，我们可以完成解密脚本：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> unpad</span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;key.txt&#x27;</span>, <span class="string">&#x27;rb&#x27;</span>) <span class="keyword">as</span> f1, <span class="built_in">open</span>(<span class="string">&quot;atom.js&quot;</span>, <span class="string">&quot;rb&quot;</span>) <span class="keyword">as</span> f2:</span><br><span class="line">    key = f1.read()</span><br><span class="line">    ciphertext = base64.b64decode(f2.read())</span><br><span class="line"></span><br><span class="line">iv = ciphertext[<span class="number">0</span>:<span class="number">16</span>]</span><br><span class="line">ciphertext = ciphertext[<span class="number">16</span>:]</span><br><span class="line">aes = AES.new(key, AES.MODE_CBC, iv)</span><br><span class="line">plaintext = aes.decrypt(ciphertext)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&quot;atom_decrypt.js&quot;</span>, <span class="string">&quot;wb&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    f.write(unpad(plaintext, <span class="number">16</span>))</span><br></pre></td></tr></table></figure>
+<h1 id="混淆的javascript">混淆的JavaScript</h1>
+<p>本来以为折腾完外面的AES加密就完事了，但是实际上之前折腾最久的还是改里面javascript代码的逻辑……</p>
+<p>解密之后出来的是大量的经过压缩的js代码，首先先格式化一下，得到稍微适合人类阅读一点的代码。（但是所有的变量名都没有了，这是痛苦的）</p>
+<p><img src="active_typora.jpg" /></p>
+<p>根据Typora的授权页面的特点，我们重点去搜索<code>License</code>、<code>Invalid</code>这样的字符串，找到了这部分代码：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">(m.handle(</span><br><span class="line">      <span class="string">&quot;addLicense&quot;</span>,</span><br><span class="line">      <span class="keyword">async</span> (e, &#123; <span class="attr">email</span>: t, <span class="attr">license</span>: n, <span class="attr">force</span>: o &#125;) =&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="keyword">await</span> (<span class="keyword">async</span> <span class="function"><span class="keyword">function</span> (<span class="params">e, t, n</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (</span><br><span class="line">              ((e = (e || <span class="string">&quot;&quot;</span>)</span><br><span class="line">                .replace(<span class="regexp">/^[\s\u200b ]/g</span>, <span class="string">&quot;&quot;</span>)</span><br><span class="line">                .replace(<span class="regexp">/[\s\u200b ]$/g</span>, <span class="string">&quot;&quot;</span>)),</span><br><span class="line">              (t = (t || <span class="string">&quot;&quot;</span>)</span><br><span class="line">                .replace(<span class="regexp">/^[\s\u200b ]/g</span>, <span class="string">&quot;&quot;</span>)</span><br><span class="line">                .replace(<span class="regexp">/[\s\u200b ]$/g</span>, <span class="string">&quot;&quot;</span>)),</span><br><span class="line">              !<span class="regexp">/^[^\s@&#x27;&quot;/\\=?]+@[^\s@&#x27;&quot;/\\]+\.[^\s@&#x27;&quot;/\\]+$/</span>.test(e))</span><br><span class="line">            )</span><br><span class="line">              <span class="keyword">return</span> [!<span class="number">1</span>, <span class="string">&quot;Please input a valid email address&quot;</span>];</span><br><span class="line">            <span class="keyword">if</span> (!Y(t)) <span class="keyword">return</span> [!<span class="number">1</span>, <span class="string">&quot;Please input a valid license code&quot;</span>];</span><br></pre></td></tr></table></figure>
+<p>可以看到这一部分是实现对输入邮箱和序列号的本地验证。其中验证序列号的函数<code>Y(t)</code>是这样的：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> Y = <span class="function">(<span class="params">e</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> r = <span class="string">&quot;L23456789ABCDEFGHJKMNPQRSTUVWXYZ&quot;</span>;</span><br><span class="line">    <span class="keyword">if</span> (!<span class="regexp">/^([A-Z0-9]&#123;6&#125;-)&#123;3&#125;[A-Z0-9]&#123;6&#125;$/</span>.exec(e)) <span class="keyword">return</span> !<span class="number">1</span>;</span><br><span class="line">    <span class="comment">//验证格式</span></span><br><span class="line">    <span class="keyword">var</span> e = e.replace(<span class="regexp">/-/g</span>, <span class="string">&quot;&quot;</span>),</span><br><span class="line">        t = e.substr(<span class="number">22</span>);</span><br><span class="line">    <span class="keyword">return</span> (</span><br><span class="line">        !e.replace(<span class="regexp">/[L23456789ABCDEFGHJKMNPQRSTUVWXYZ]/g</span>, <span class="string">&quot;&quot;</span>) &amp;&amp;</span><br><span class="line">        t ==</span><br><span class="line">        (<span class="function">(<span class="params">e</span>) =&gt;</span> &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">var</span> t = <span class="string">&quot;&quot;</span>, n = <span class="number">0</span>; n &lt; <span class="number">2</span>; n++) &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">var</span> o = <span class="number">0</span>, i = <span class="number">0</span>; i &lt; <span class="number">16</span>; i += <span class="number">2</span>)</span><br><span class="line">                o += r.indexOf(e[n + i]);</span><br><span class="line">            (o %= r.length), (t += r[o]);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> t;</span><br><span class="line">            <span class="comment">// 校验？</span></span><br><span class="line">        &#125;)(e)</span><br><span class="line">    );</span><br><span class="line">    &#125;,</span><br></pre></td></tr></table></figure>
+<p>可以直接删除这部分逻辑，强制返回<code>true</code>。</p>
+<p>接下来，负责激活的函数生成一个请求json，其中包含了版本、序列号、邮箱和设备信息等。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">t = &#123;</span><br><span class="line">    <span class="attr">v</span>: A() + <span class="string">&quot;|&quot;</span> + l.getVersion(),</span><br><span class="line">    <span class="attr">license</span>: t,</span><br><span class="line">    <span class="attr">email</span>: e,</span><br><span class="line">    <span class="attr">l</span>: <span class="keyword">await</span> G(), <span class="comment">// 获取主机名</span></span><br><span class="line">    <span class="attr">f</span>: <span class="keyword">await</span> M(), <span class="comment">// 获取机器码</span></span><br><span class="line">    <span class="attr">u</span>: l.setting.generateUUID(),</span><br><span class="line">    <span class="attr">type</span>: <span class="built_in">global</span>.devVersion ? <span class="string">&quot;dev&quot;</span> : <span class="string">&quot;&quot;</span>,</span><br><span class="line">    <span class="attr">force</span>: n,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="built_in">JSON</span>.stringify(t);</span><br></pre></td></tr></table></figure>
+<p>这部分信息会被发送给验证服务器，并返回一个结果：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">var</span> o = <span class="keyword">await</span> R(<span class="string">&quot;api/client/activate&quot;</span>, t, !<span class="number">0</span>); <span class="comment">// 发送请求</span></span><br><span class="line">    <span class="keyword">if</span> (</span><br><span class="line">    (<span class="built_in">JSON</span>.stringify(o.data),</span><br><span class="line">    <span class="built_in">console</span>.log(</span><br><span class="line">        <span class="string">&quot;[License] response code is &quot;</span> + o.data.code</span><br><span class="line">    ),</span><br><span class="line">    o.data.code == D.SUCCESS)</span><br><span class="line">    )</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">await</span> Z(o.data.msg))</span><br><span class="line">        ? [!<span class="number">0</span>, <span class="string">&quot;&quot;</span>]</span><br><span class="line">        : [!<span class="number">1</span>, <span class="string">&quot;Please input a valid license code&quot;</span>];</span><br></pre></td></tr></table></figure>
+<p>我们可以直接修改代码中的<code>o.data.code</code>字段来将返回值强制设定为<code>SUCCESS</code>以通过验证。接下来我们来看函数<code>Z(o.data.msg)</code>。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">Z</span>(<span class="params">e</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">var</span> &#123; <span class="attr">fingerprint</span>: t, <span class="attr">email</span>: n, <span class="attr">license</span>: o, <span class="attr">type</span>: i &#125; = I(e) || &#123;&#125;;</span><br><span class="line">    <span class="keyword">return</span> t == (<span class="keyword">await</span> M()) &amp;&amp; n &amp;&amp; o</span><br><span class="line">        ? (H(n, o, i),</span><br><span class="line">        d().put(</span><br><span class="line">            <span class="string">&quot;SLicense&quot;</span>,</span><br><span class="line">            e + <span class="string">&quot;#0#&quot;</span> + <span class="keyword">new</span> <span class="built_in">Date</span>().toLocaleDateString(<span class="string">&quot;en-US&quot;</span>)</span><br><span class="line">        ),</span><br><span class="line">        (s = !<span class="number">0</span>))</span><br><span class="line">        : (<span class="built_in">console</span>.log(<span class="string">&quot;[License] validate server return fail&quot;</span>), V(), !<span class="number">1</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    <span class="keyword">throw</span> (</span><br><span class="line">        (<span class="built_in">console</span>.error(e.stack), <span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">&quot;WriteActivationInfoFail&quot;</span>))</span><br><span class="line">    );</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数首先通过一个<code>I(e)</code>将<code>o.data.msg</code>解析为一个字典格式，接下来比较其中的fingerprint和本地机器码是否一样，同时判断是否存在<code>email</code>和<code>license</code>。如果一样则执行下面的函数<code>H(n,o,i)</code>和<code>d().put()</code>。</p>
+<p>查看<code>d().put(key, value)</code>方法的定义我们可以知道，这个函数是将注册表中<code>SFOTWARE/Typora</code>下的<code>key</code>值设置为<code>value</code>，在这里也就是将服务器返回的<code>o.data.msg</code>拼接上<code>#0#</code>和当前日期写入Typora注册表对应的<code>SLicense</code>键中。<code>H(n,o,i)</code>则是设置了一些参数并且将当前窗口上的<code>UNREGISTERED×</code>标签去掉。</p>
+<p>那么重点就在于分析<code>I(e)</code>这个函数。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">        <span class="keyword">const</span> I = <span class="function">(<span class="params">e</span>) =&gt;</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (!e) <span class="keyword">return</span> e;</span><br><span class="line">            <span class="keyword">var</span> t;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">              t = Buffer.from(e, <span class="string">&quot;base64&quot;</span>);</span><br><span class="line">              <span class="keyword">const</span> n = a(<span class="number">289</span>).publicDecrypt(</span><br><span class="line">                <span class="string">`-----BEGIN PUBLIC KEY-----</span></span><br><span class="line"><span class="string">MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7nVoGCHqIMJyqgALEUrc</span></span><br><span class="line"><span class="string">......</span></span><br><span class="line"><span class="string">`</span>,</span><br><span class="line">                t</span><br><span class="line">              );</span><br><span class="line">              <span class="keyword">return</span> <span class="built_in">JSON</span>.parse(n.toString(<span class="string">&quot;utf8&quot;</span>));</span><br><span class="line">            &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">              <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;,</span><br></pre></td></tr></table></figure>
+<p>这个函数传入的数据通过base64解密，并通过一个公钥解密得到一个json形式的字符串。</p>
+<p>这个字符串根据前面的内容也就是设备的指纹、邮箱和license，服务器对我们提交的信息进行了验证并使用自己的私钥进行了签名。因为无法获取到服务器的私钥，所以我们也无法直接去伪造这个数据。不过我们可以直接修改这函数使其直接返回一个固定的字典格式的数据。这样，无论我们提交上去了什么样的数据，服务器返回怎么样的报错信息，状态码都会被设置为<code>SUCCESS</code>，且<code>I(e)</code>都会返回一个在本地看起来有效的数据。这个数据会被函数<code>Z</code>写入本地注册表并在每一次读取中生效。</p>
+<p>另一处对本地注册表的引用在这里。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">_ = <span class="function">() =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> e = d().get(<span class="string">&quot;SLicense&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span> (!e) <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">var</span> [t, n, o] = e.split(<span class="string">&quot;#&quot;</span>),</span><br><span class="line">        t = I(t);</span><br><span class="line">    <span class="keyword">return</span> t &amp;&amp; t.fingerprint == i</span><br><span class="line">        ? (<span class="built_in">Object</span>.assign(t, &#123; <span class="attr">failCounts</span>: n, <span class="attr">lastRetry</span>: <span class="keyword">new</span> <span class="built_in">Date</span>(o) &#125;), t)</span><br><span class="line">        : <span class="literal">null</span>;</span><br><span class="line">    &#125;,</span><br></pre></td></tr></table></figure>
+<p>这里程序会读取注册表项中的<code>SLicense</code>并且验证其是否有效。当然对于经过修改的程序，这是始终有效的。此外还有授权的验证部分：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    ee();</span><br><span class="line">    <span class="keyword">const</span> e = <span class="keyword">await</span> a(<span class="number">225</span>).post(E + <span class="string">&quot;/api/client/renew&quot;</span>, n, &#123;</span><br><span class="line">        <span class="attr">timeout</span>: <span class="number">4e4</span>,</span><br><span class="line">        <span class="attr">headers</span>: &#123; <span class="string">&quot;Cache-Control&quot;</span>: <span class="string">&quot;no-cache&quot;</span> &#125;,</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="built_in">JSON</span>.stringify(e.data),</span><br><span class="line">        e.data.success ||</span><br><span class="line">        (<span class="built_in">console</span>.warn(<span class="string">&quot;[renewL]: unfill due to renew fail&quot;</span>),</span><br><span class="line">        V(e.data.msg)),</span><br><span class="line">        d().put(<span class="string">&quot;SLicense&quot;</span>, [e.data.msg, <span class="number">0</span>, o].join(<span class="string">&quot;#&quot;</span>));</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">    e.stack,</span><br><span class="line">        r.captureException(e, &#123; <span class="attr">level</span>: <span class="string">&quot;warning&quot;</span> &#125;),</span><br><span class="line">        <span class="built_in">console</span>.warn(<span class="string">&quot;Failed to Renew L&quot;</span>);</span><br><span class="line">    <span class="keyword">var</span> [t, n] = (i = d().get(<span class="string">&quot;SLicense&quot;</span>)).split(<span class="string">&quot;#&quot;</span>),</span><br><span class="line">        i = [t, (n = +n + <span class="number">1</span>), o].join(<span class="string">&quot;#&quot;</span>);</span><br><span class="line">    d().put(<span class="string">&quot;SLicense&quot;</span>, i);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这一段代码会验证本地的<code>SLicense</code>是否正确，因此我们需要将这一段代码进行修改或是直接删去。</p>
+<p>这样就能基本上完成对软件的破解。</p>
+<p>在完成对<code>atom.js</code>的修改之后，需要重新对文件进行加密和打包。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> pad</span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;iv.txt&#x27;</span>, <span class="string">&#x27;rb&#x27;</span>) <span class="keyword">as</span> f1, <span class="built_in">open</span>(<span class="string">&#x27;key.txt&#x27;</span>, <span class="string">&#x27;rb&#x27;</span>) <span class="keyword">as</span> f2, <span class="built_in">open</span>(<span class="string">&quot;atom_decrypt.js&quot;</span>, <span class="string">&quot;rb&quot;</span>) <span class="keyword">as</span> f3:</span><br><span class="line">    iv = f1.read()</span><br><span class="line">    key = f2.read()</span><br><span class="line">    plaintext = f3.read()</span><br><span class="line"></span><br><span class="line">aes = AES.new(key, AES.MODE_CBC, iv)</span><br><span class="line">ciphertext = aes.encrypt(pad(plaintext, <span class="number">16</span>))</span><br><span class="line">ciphertext = iv + ciphertext</span><br><span class="line">base64_cipher = base64.b64encode(ciphertext)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&quot;atom.js&quot;</span>, <span class="string">&quot;wb&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    f.write(base64_cipher)</span><br></pre></td></tr></table></figure>
+<p>打包的指令为<code>asar pack &lt;sources&gt; &lt;target&gt;</code>。替换原先的文件即可完成。</p>
+<p><img src="crack.jpg" /></p>
+<h1 id="总结">总结</h1>
+<p>许多地方都在强调的一点是，Electron做了一个打包工作，诸如asar这样的实际上是不能保证源码的安全的。</p>
+<p>参考资料中electron-asar-encrypt-demo这个项目所做的就是利用C++进行了一层封装，将源码进行了加密以保证安全。但是像Typora这样的在<code>APPDATA/Loca/Temp</code>下面也是能够找到未加密的node
+js源码，所以这个过程做的更多的还是保护一个防篡改的功能。</p>
+<p>但是显然简单的AES-CBC是防不了篡改的……</p>
+<p>所以说理论上应该有一些更有效的手段吧？比如对源码先加上一个哈希？或者用私钥对源码进行签名？</p>
+<p>不过这样的手段还是能够通过patch可执行文件来解决……不过这样增加了破解的难度效果恐怕还是不错的吧……</p>
+<h1 id="参考资料">参考资料</h1>
+<p>[0] https://typora.io/</p>
+<p>[1] https://www.52pojie.cn/thread-1553967-1-1.html</p>
+<p>[2] https://github.com/Mas0nShi/typoraCracker</p>
+<p>[3] https://github.com/toyobayashi/electron-asar-encrypt-demo</p>
+<p>[4] https://github.com/electron/asar</p>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2022/03/30/stackoverflow-ret2libc/" title="栈溢出，ret2libc">
+                    <div class="prevTitle">栈溢出，ret2libc</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <div id="comment"></div>
+    <script>
+        new Valine({
+            el: '#comment',
+            notify:false,
+            verify:false,
+            appId: "amyVU3zcpK0XzPeb5UbFtBXu-MdYXbMMI",
+            appKey: "9LBOiquxlPTvprUxTuN1KqIl",
+            placeholder: "都有啥要说的（",
+            path:window.location.pathname,
+            avatar:'mm'
+        });
+    </script>
+
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+        
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
+
+
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+            
+                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+            
+                <span class="iconfont-archer qq" title=qq>
+                    
+                    <img class="profile-qr" src="/assets/qq.png" />
+                </span>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
+            
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%96%E9%9D%A2%E7%9A%84%E4%BF%9D%E6%8A%A4"><span class="toc-number">1.</span> <span class="toc-text">外面的保护</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B7%E6%B7%86%E7%9A%84javascript"><span class="toc-number">2.</span> <span class="toc-text">混淆的JavaScript</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">4.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 17
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/07</span>
+            <a class="archive-post-title" href="/2022/04/07/typora-reverse-engineering/">针对Typora的逆向分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/30</span>
+            <a class="archive-post-title" href="/2022/03/30/stackoverflow-ret2libc/">栈溢出，ret2libc</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/28</span>
+            <a class="archive-post-title" href="/2022/03/28/stackoverflow-learn/">关于栈溢出的一些东西（基本的）</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/23</span>
+            <a class="archive-post-title" href="/2022/03/23/mpc-gmw/">多方安全计算——GMW协议</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/22</span>
+            <a class="archive-post-title" href="/2022/03/22/program-start/">关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/16</span>
+            <a class="archive-post-title" href="/2022/03/16/wiener-attack/">Wiener's Attack</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/23</span>
+            <a class="archive-post-title" href="/2022/02/23/mpc-2-gc/">安全多方计算——乱码电路协议</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/15</span>
+            <a class="archive-post-title" href="/2022/02/15/re-call/">关于x86调用惯例是啥这件事</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/10</span>
+            <a class="archive-post-title" href="/2022/02/10/re-review2/">ELF格式学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/07</span>
+            <a class="archive-post-title" href="/2022/02/07/mpc-1/">安全多方计算——定义、原语</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/20</span>
+            <a class="archive-post-title" href="/2022/01/20/re-review1/">IA32内存、寄存器、数据</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/07</span>
+            <a class="archive-post-title" href="/2022/01/07/some-attack-on-rsa-I/">一些针对RSA的攻击（I）</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/02</span>
+            <a class="archive-post-title" href="/2022/01/02/cbc-padding-oracle-attack/">CBC Padding Oracle Attack</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2021 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/09</span>
+            <a class="archive-post-title" href="/2021/12/09/aes-ecb-attack/">Byte-at-a-time ECB Decryption</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/06</span>
+            <a class="archive-post-title" href="/2021/12/06/CVE-2021-39503/">CVE-2021-39503复现</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/sm2/">国密SM2算法学习</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/03</span>
+            <a class="archive-post-title" href="/2021/12/03/HelloWorld/">HelloWorld</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="漏洞复现">
+                <span class="iconfont-archer">&#xe606;</span>
+                漏洞复现
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="对称密码和安全">
+                <span class="iconfont-archer">&#xe606;</span>
+                对称密码和安全
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ELF">
+                <span class="iconfont-archer">&#xe606;</span>
+                ELF
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="逆向工程">
+                <span class="iconfont-archer">&#xe606;</span>
+                逆向工程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="x86">
+                <span class="iconfont-archer">&#xe606;</span>
+                x86
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="公钥密码和数学">
+                <span class="iconfont-archer">&#xe606;</span>
+                公钥密码和数学
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="安全多方计算">
+                <span class="iconfont-archer">&#xe606;</span>
+                安全多方计算
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Pwn">
+                <span class="iconfont-archer">&#xe606;</span>
+                Pwn
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="Web安全">
+            <span class="iconfont-archer">&#xe60a;</span>
+            Web安全
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="密码学">
+            <span class="iconfont-archer">&#xe60a;</span>
+            密码学
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="二进制">
+            <span class="iconfont-archer">&#xe60a;</span>
+            二进制
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMeta = {
+        url: "http://symlpigeon.github.io",
+        root: "/",
+        author: "symlPigeon"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20210823"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20210823"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20210823" async></script>
+        
+        <!-- mermaid -->
+        
+            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
+            <script>
+                if (window.mermaid) {
+                    mermaid.initialize({theme: 'dark'});
+                }
+            </script>
+        
+    </body>
+</html>
