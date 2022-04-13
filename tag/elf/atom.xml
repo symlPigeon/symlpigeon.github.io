@@ -1,0 +1,1211 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>http://symlpigeon.github.io</id>
+    <title>symlpigeon&#39;s little gensokyo • Posts by &#34;elf&#34; tag</title>
+    <link href="http://symlpigeon.github.io" />
+    <updated>2022-03-22T08:46:07.000Z</updated>
+    <category term="漏洞复现" />
+    <category term="对称密码和安全" />
+    <category term="安全多方计算" />
+    <category term="逆向工程" />
+    <category term="x86" />
+    <category term="ELF" />
+    <category term="Linux" />
+    <category term="公钥密码和数学" />
+    <category term="Pwn" />
+    <entry>
+        <id>http://symlpigeon.github.io/2022/03/22/program-start/</id>
+        <title>关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</title>
+        <link rel="alternate" href="http://symlpigeon.github.io/2022/03/22/program-start/"/>
+        <content type="html">&lt;p&gt;之前偶尔写一些逆向的时候总会看到IDA反汇编出来的函数列表里面有&lt;code&gt;_start&lt;/code&gt;这样的奇奇怪怪的函数，在调试的时候&lt;code&gt;main&lt;/code&gt;函数&lt;code&gt;return&lt;/code&gt;之后也会到一些奇奇怪怪的地方去。感觉是应该去把这些东西给理一下了。&lt;/p&gt;
+&lt;h1 id=&#34;程序的启动和execve&#34;&gt;程序的启动和&lt;code&gt;execve&lt;/code&gt;&lt;/h1&gt;
+&lt;p&gt;我们在shell中执行一个程序的时候，Linux内核会去装载这个程序并且去执行。&lt;/p&gt;
+&lt;p&gt;按照以前所学的shell的实现，当在终端中输入了一条命令之后，shell会进行&lt;code&gt;fork()&lt;/code&gt;调用创建一个新的进程，并在新的进程中执行这条命令。&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb1&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb1-1&#34;&gt;&lt;a href=&#34;#cb1-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; run_command&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; command&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; args&lt;span class=&#34;op&#34;&gt;[],&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; args_cnt&lt;span class=&#34;op&#34;&gt;)&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-2&#34;&gt;&lt;a href=&#34;#cb1-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;co&#34;&gt;// background 指定命令是否在后台运行&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-3&#34;&gt;&lt;a href=&#34;#cb1-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; background &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-4&#34;&gt;&lt;a href=&#34;#cb1-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;strcmp&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;args&lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;args_cnt &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;],&lt;/span&gt; &lt;span class=&#34;st&#34;&gt;&amp;quot;&amp;amp;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-5&#34;&gt;&lt;a href=&#34;#cb1-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        &lt;span class=&#34;co&#34;&gt;// 以&amp;amp;参数结尾的命令，在后台中运行&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-6&#34;&gt;&lt;a href=&#34;#cb1-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        args&lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;args_cnt &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;]&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; NULL&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-7&#34;&gt;&lt;a href=&#34;#cb1-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        background &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-8&#34;&gt;&lt;a href=&#34;#cb1-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-9&#34;&gt;&lt;a href=&#34;#cb1-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;run_inner_command&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;command&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; args&lt;span class=&#34;op&#34;&gt;))&amp;#123;&lt;/span&gt; &lt;span class=&#34;co&#34;&gt;// 排除掉shell的内置指令&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-10&#34;&gt;&lt;a href=&#34;#cb1-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        &lt;span class=&#34;co&#34;&gt;// shell会fork一个新的进程&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-11&#34;&gt;&lt;a href=&#34;#cb1-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        pid_t pid &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; fork&lt;span class=&#34;op&#34;&gt;();&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-12&#34;&gt;&lt;a href=&#34;#cb1-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;pid &lt;span class=&#34;op&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-13&#34;&gt;&lt;a href=&#34;#cb1-13&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;co&#34;&gt;// fork失败，报错&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-14&#34;&gt;&lt;a href=&#34;#cb1-14&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            printf&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;Unable to fork child process!&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-15&#34;&gt;&lt;a href=&#34;#cb1-15&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-16&#34;&gt;&lt;a href=&#34;#cb1-16&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;        &lt;span class=&#34;cf&#34;&gt;else&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-17&#34;&gt;&lt;a href=&#34;#cb1-17&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;co&#34;&gt;// 既然pid是0，说明是子进程&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-18&#34;&gt;&lt;a href=&#34;#cb1-18&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;pid &lt;span class=&#34;op&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-19&#34;&gt;&lt;a href=&#34;#cb1-19&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                fflush&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;stdout&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-20&#34;&gt;&lt;a href=&#34;#cb1-20&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;co&#34;&gt;// 调用execvp去执行命令，这个execvp下面再说&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-21&#34;&gt;&lt;a href=&#34;#cb1-21&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;execvp&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;command&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; args&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;dv&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-22&#34;&gt;&lt;a href=&#34;#cb1-22&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                    &lt;span class=&#34;co&#34;&gt;// 返回值-1说明执行失败&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-23&#34;&gt;&lt;a href=&#34;#cb1-23&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                    printf&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;Error when executing command %s&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; command&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-24&#34;&gt;&lt;a href=&#34;#cb1-24&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;co&#34;&gt;// 结束子进程的执行&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-25&#34;&gt;&lt;a href=&#34;#cb1-25&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                exit&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-26&#34;&gt;&lt;a href=&#34;#cb1-26&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-27&#34;&gt;&lt;a href=&#34;#cb1-27&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;cf&#34;&gt;else&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-28&#34;&gt;&lt;a href=&#34;#cb1-28&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;co&#34;&gt;// pid不是0，是父进程&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-29&#34;&gt;&lt;a href=&#34;#cb1-29&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(!&lt;/span&gt;background&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-30&#34;&gt;&lt;a href=&#34;#cb1-30&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                    &lt;span class=&#34;co&#34;&gt;// 如果命令不是后台执行那么就得等待子进程结束了&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-31&#34;&gt;&lt;a href=&#34;#cb1-31&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                    waitpid&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;pid&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; NULL&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-32&#34;&gt;&lt;a href=&#34;#cb1-32&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;cf&#34;&gt;else&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-33&#34;&gt;&lt;a href=&#34;#cb1-33&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                    fflush&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;stdout&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-34&#34;&gt;&lt;a href=&#34;#cb1-34&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-35&#34;&gt;&lt;a href=&#34;#cb1-35&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;            &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-36&#34;&gt;&lt;a href=&#34;#cb1-36&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-37&#34;&gt;&lt;a href=&#34;#cb1-37&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;前面提到了&lt;code&gt;execvp(const char* file, char* const argv[])&lt;/code&gt;，这个函数定义在&lt;code&gt;unistd.h&lt;/code&gt;中。这个头文件中还定义了其他的一系列函数：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb2&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb2-1&#34;&gt;&lt;a href=&#34;#cb2-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execl&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;path&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;arg&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;...);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb2-2&#34;&gt;&lt;a href=&#34;#cb2-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execlp&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;file&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;arg&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;...);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb2-3&#34;&gt;&lt;a href=&#34;#cb2-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execle&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;path&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;arg&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;...,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;[]);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb2-4&#34;&gt;&lt;a href=&#34;#cb2-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execv&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;path&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;[]);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb2-5&#34;&gt;&lt;a href=&#34;#cb2-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execvp&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;file&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;[]);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb2-6&#34;&gt;&lt;a href=&#34;#cb2-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; execvpe&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;file&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;[],&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;[]);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;应该说这些函数实际上都是通过调用&lt;code&gt;execve&lt;/code&gt;来实现的。这些函数定义在glibc中，通过一个系统调用来实现。&lt;/p&gt;
+&lt;p&gt;glibc中的execve产生的系统调用会被Linux内核接收并处理，Linux内核会读取对应的文件并装载入内存进行执行。内核中对这个过程的实现包括了一系列的函数，在这里就不多说了。&lt;/p&gt;
+&lt;h1 id=&#34;入口点和_start&#34;&gt;入口点和&lt;code&gt;_start&lt;/code&gt;&lt;/h1&gt;
+&lt;p&gt;我们写一个简单的程序。&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb3&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb3-1&#34;&gt;&lt;a href=&#34;#cb3-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; main&lt;span class=&#34;op&#34;&gt;()&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-2&#34;&gt;&lt;a href=&#34;#cb3-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这仅仅是一个空的函数体，只能勉强称之为“程序”。编译之后，通过&lt;code&gt;readelf&lt;/code&gt;读取文件头信息：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;ELF 头：
+  Magic：  7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  类别:                              ELF32
+  数据:                              2 补码，小端序 (little endian)
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI 版本:                          0
+  类型:                              DYN (Position-Independent Executable file)
+  系统架构:                          Intel 80386
+  版本:                              0x1
+  入口点地址：              0x1050
+  程序头起点：              52 (bytes into file)
+  Start of section headers:          14180 (bytes into file)
+  标志：             0x0
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         12
+  Size of section headers:           40 (bytes)
+  Number of section headers:         36
+  Section header string table index: 35
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;可以看到程序的入口点是&lt;code&gt;0x1050&lt;/code&gt;。我们通过objdump反汇编查看对应的入口点：&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;00001050 &amp;lt;_start&amp;gt;:
+    1050:       f3 0f 1e fb             endbr32 
+    1054:       31 ed                   xor    ebp,ebp
+    1056:       5e                      pop    esi
+    1057:       89 e1                   mov    ecx,esp
+    1059:       83 e4 f0                and    esp,0xfffffff0
+    105c:       50                      push   eax
+    105d:       54                      push   esp
+    105e:       52                      push   edx
+    105f:       e8 18 00 00 00          call   107c &amp;lt;_start+0x2c&amp;gt;
+    1064:       81 c3 9c 2f 00 00       add    ebx,0x2f9c
+    106a:       6a 00                   push   0x0
+    106c:       6a 00                   push   0x0
+    106e:       51                      push   ecx
+    106f:       56                      push   esi
+    1070:       ff b3 f8 ff ff ff       push   DWORD PTR [ebx-0x8]
+    1076:       e8 c5 ff ff ff          call   1040 &amp;lt;__libc_start_main@plt&amp;gt;
+    107b:       f4                      hlt    
+    107c:       8b 1c 24                mov    ebx,DWORD PTR [esp]
+    107f:       c3                      ret    &lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;和常识并不相符——程序的入口点实际上对应的是这个&lt;code&gt;_start&lt;/code&gt;函数，而不是&lt;code&gt;main&lt;/code&gt;函数。&lt;/p&gt;
+&lt;p&gt;如果用GDB进行调试，实际上程序在最开始会从&lt;code&gt;_start&lt;/code&gt;跳转进入&lt;code&gt;_dl_start&lt;/code&gt;函数进行操作，这个函数是glibc中的一个函数，Linux系统中在执行&lt;code&gt;execve&lt;/code&gt;（实际上是&lt;code&gt;do_execveat_common&lt;/code&gt;）时调用它，主要是用来进行动态链接。在程序执行结束之后，也有一个类似的函数用来解除动态链接。&lt;/p&gt;
+&lt;p&gt;最开始的&lt;code&gt;endbr32&lt;/code&gt;（或者&lt;code&gt;endbr64&lt;/code&gt;）指令的作用是用作跳转的目的地址，跳转的目的地址位置上的指令是&lt;code&gt;endbr32&lt;/code&gt;说明这是这个跳转有效，这个指令此外并没有作用。&lt;/p&gt;
+&lt;p&gt;首先这里执行了&lt;code&gt;xor ebp, ebp&lt;/code&gt;，将&lt;code&gt;ebp&lt;/code&gt;的值置为0。接下来，&lt;code&gt;pop esi&lt;/code&gt;指令将栈顶的数据弹出到&lt;code&gt;esi&lt;/code&gt;中。&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;start-dbg1.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;图片是在执行&lt;code&gt;pop esi&lt;/code&gt;的上一步操作，此时&lt;code&gt;esi&lt;/code&gt;的值是之前&lt;code&gt;dl_start&lt;/code&gt;调用留下的，指向栈上的一个位置。而&lt;code&gt;EBP&lt;/code&gt;的值已经被设置为了0x0。&lt;/p&gt;
+&lt;p&gt;在执行完&lt;code&gt;pop esi&lt;/code&gt;之后，我们观察程序的栈：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;start-dbg1.5.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;先前在栈顶的位置上是&lt;code&gt;argc&lt;/code&gt;（0x1），被弹出之后，现在剩下&lt;code&gt;argv&lt;/code&gt;和&lt;code&gt;envp&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;mov ecx, esp&lt;/code&gt;将&lt;code&gt;esp&lt;/code&gt;的值放入&lt;code&gt;ecx&lt;/code&gt;中，也就是将&lt;code&gt;ecx&lt;/code&gt;指向目前栈顶的位置，这个位置存放的实际上就是&lt;code&gt;argv&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;start-dbg2.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;接下来的操作&lt;code&gt;and esp, 0xfffffff0&lt;/code&gt;将&lt;code&gt;esp&lt;/code&gt;的最低4位置为了0。这一步显然会让栈顶向上移动，但是移动的距离是不固定的，取决于执行这条命令之前栈顶的位置。这样操作的目的在于将栈顶和4字节对齐。&lt;/p&gt;
+&lt;p&gt;接下来的一段代码是这些：&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;push    eax
+push    esp
+push    edx
+call    _start+0x2c&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;在执行&lt;code&gt;call _start+0x2c&lt;/code&gt;之前，程序的寄存器和栈分别是：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt; EAX  0xf7ffda20 —▸ 0x56555000 ◂— 0x464c457f
+ EBX  0xf7ffcfd4 (_GLOBAL_OFFSET_TABLE_) ◂— 0x37f2c
+ ECX  0xffffd034 —▸ 0xffffd210 ◂— &amp;#39;/home/syml/Temp/test&amp;#39;
+ EDX  0xf7fcaa30 (_dl_fini) ◂— endbr32 
+ EDI  0x56556050 (_start) ◂— endbr32 
+ ESI  0x1
+ EBP  0x0
+*ESP  0xffffd024 —▸ 0xf7fcaa30 (_dl_fini) ◂— endbr32 
+*EIP  0x5655605f (_start+15) ◂— call   0x5655607c
+----------------------------------------------------------------
+00:0000│ esp 0xffffd024 —▸ 0xf7fcaa30 (_dl_fini) ◂— endbr32 
+01:0004│     0xffffd028 —▸ 0xffffd02c —▸ 0xf7ffda20 —▸ 0x56555000 ◂— 0x464c457f
+02:0008│     0xffffd02c —▸ 0xf7ffda20 —▸ 0x56555000 ◂— 0x464c457f
+03:000c│     0xffffd030 ◂— 0x1
+04:0010│ ecx 0xffffd034 —▸ 0xffffd210 ◂— &amp;#39;/home/syml/Temp/test&amp;#39;
+05:0014│     0xffffd038 ◂— 0x0
+06:0018│     0xffffd03c —▸ 0xffffd225 ◂— &amp;#39;SHELL_SESSION_ID=7d181dfe24dd4f97af595a6b18695b24&amp;#39;
+07:001c│     0xffffd040 —▸ 0xffffd257 ◂— &amp;#39;DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus&amp;#39;&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这一段代码接下来跳转到下面的部分：&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;mov     ebx, dword ptr [esp]
+ret&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;第一条指令将栈顶的数据放入&lt;code&gt;ebx&lt;/code&gt;中。经过上一步的&lt;code&gt;call&lt;/code&gt;指令操作，栈顶现在的值为&lt;code&gt;call&lt;/code&gt;的指令返回地址，也就是&lt;code&gt;call&lt;/code&gt;的下一条指令所在的地方。&lt;/p&gt;
+&lt;p&gt;接下来执行&lt;code&gt;ret&lt;/code&gt;，程序返回&lt;code&gt;esp&lt;/code&gt;所指位置的值对应的地址，也就是&lt;code&gt;call&lt;/code&gt;下一条指令的位置。（将栈顶的元素弹出到&lt;code&gt;eip&lt;/code&gt;）&lt;/p&gt;
+&lt;p&gt;下面的指令是&lt;code&gt;add ebx, 0x2148&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;在执行之后，各个寄存器的值：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;start-dbg3.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;在这个时候，&lt;code&gt;ebx&lt;/code&gt;指向了&lt;code&gt;_GLOBAL_OFFSET_TABLE_&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;接下来的指令序列分别是：&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;push    0
+push    0
+push    ecx ; argc
+push    esi
+push    dword ptr [ebx - 8] ; 
+call    __libc_start_main@plt&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;执行完前面的&lt;code&gt;push&lt;/code&gt;指令序列之后，栈上的情况是：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;start-dbg4.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;这里&lt;code&gt;dword ptr [ebx - 8]&lt;/code&gt;指针实际对应的位置就是&lt;code&gt;main&lt;/code&gt;函数的入口点。&lt;/p&gt;
+&lt;p&gt;查看&lt;code&gt;__libc_start_main&lt;/code&gt;的定义：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb10&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb10-1&#34;&gt;&lt;a href=&#34;#cb10-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; __libc_start_main&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb10-2&#34;&gt;&lt;a href=&#34;#cb10-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;main&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*),&lt;/span&gt; &lt;/span&gt;
+&lt;span id=&#34;cb10-3&#34;&gt;&lt;a href=&#34;#cb10-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;/span&gt;
+&lt;span id=&#34;cb10-4&#34;&gt;&lt;a href=&#34;#cb10-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; ubp_av&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;co&#34;&gt;// argv&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb10-5&#34;&gt;&lt;a href=&#34;#cb10-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;init&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt; &lt;/span&gt;
+&lt;span id=&#34;cb10-6&#34;&gt;&lt;a href=&#34;#cb10-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;fini&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt; &lt;/span&gt;
+&lt;span id=&#34;cb10-7&#34;&gt;&lt;a href=&#34;#cb10-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;rtld_fini&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt; &lt;/span&gt;
+&lt;span id=&#34;cb10-8&#34;&gt;&lt;a href=&#34;#cb10-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt; stack_end&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb10-9&#34;&gt;&lt;a href=&#34;#cb10-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;我们可以将参数和栈上的数据进行对应：&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style=&#34;width: 25%&#34; /&gt;
+&lt;col style=&#34;width: 25%&#34; /&gt;
+&lt;col style=&#34;width: 25%&#34; /&gt;
+&lt;col style=&#34;width: 25%&#34; /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;参数&lt;/th&gt;
+&lt;th&gt;作用&lt;/th&gt;
+&lt;th&gt;栈上位置&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;int (*main)(int, char**, char**)&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;程序的&lt;code&gt;main&lt;/code&gt;函数&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;0x5655617d (main)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;int argc&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;参数&lt;code&gt;argv&lt;/code&gt;的个数&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;0x1&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;char** ubp_av&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;参数&lt;code&gt;argv&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+8&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;0xffffd034-&amp;gt;0xffffd210&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;void (*init)(void)&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;_libc_csu_init&lt;/code&gt;函数&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+C&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;NULL(0)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;void (*fini)(void)&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;_libc_csu_fini&lt;/code&gt;函数&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+10&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;NULL(0)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;void (*rtld_fini)(void)&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;动态链接器的析构函数&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+14&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;0xf7fcaa30(_dl_fini)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;void (*stack_end)&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;栈指针&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;ESP+18&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;原&lt;code&gt;ESP&lt;/code&gt;值&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;下面执行调用，程序进入&lt;code&gt;__libc_start_main&lt;/code&gt;中。注意这里跳转到的实际上是&lt;code&gt;plt&lt;/code&gt;表中对应的表项，这是一个到内存中的索引。实际上还需要另外一次跳转。&lt;/p&gt;
+&lt;h1 id=&#34;libc_start_main&#34;&gt;&lt;code&gt;__libc_start_main&lt;/code&gt;&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;当程序进入了glibc的代码部分之后，常规人类的思维就逐渐难以跟上了。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;函数&lt;code&gt;__libc_start_main&lt;/code&gt;实际在&lt;code&gt;glibc&lt;/code&gt;下的源码&lt;code&gt;csu/libc-start.c&lt;/code&gt;中，对应了函数：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb11&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb11-1&#34;&gt;&lt;a href=&#34;#cb11-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;STATIC &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; LIBC_START_MAIN&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;main&lt;span class=&#34;op&#34;&gt;)(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;MAIN_AUXVEC_DECL&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-2&#34;&gt;&lt;a href=&#34;#cb11-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                           &lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-3&#34;&gt;&lt;a href=&#34;#cb11-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#ifdef LIBC_START_MAIN_AUXVEC_ARG&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-4&#34;&gt;&lt;a href=&#34;#cb11-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                           ElfW&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;auxv_t&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt; auxvec&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-5&#34;&gt;&lt;a href=&#34;#cb11-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#endif&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-6&#34;&gt;&lt;a href=&#34;#cb11-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                           __typeof&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;main&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; init&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;fini&lt;span class=&#34;op&#34;&gt;)(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-7&#34;&gt;&lt;a href=&#34;#cb11-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;                           &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;rtld_fini&lt;span class=&#34;op&#34;&gt;)(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;),&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;stack_end&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb11-8&#34;&gt;&lt;a href=&#34;#cb11-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    __attribute__&lt;span class=&#34;op&#34;&gt;((&lt;/span&gt;noreturn&lt;span class=&#34;op&#34;&gt;));&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这里的具体内容暂且不说，里面做了包括了这样几件事情：&lt;/p&gt;
+&lt;p&gt;重定位，PIE&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb12&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb12-1&#34;&gt;&lt;a href=&#34;#cb12-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    _dl_relocate_static_pie&lt;span class=&#34;op&#34;&gt;();&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;canary&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb13&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb13-1&#34;&gt;&lt;a href=&#34;#cb13-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;co&#34;&gt;/* Set up the pointer guard value.  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb13-2&#34;&gt;&lt;a href=&#34;#cb13-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;dt&#34;&gt;uintptr_t&lt;/span&gt; pointer_chk_guard &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb13-3&#34;&gt;&lt;a href=&#34;#cb13-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;      _dl_setup_pointer_guard&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;_dl_random&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; stack_chk_guard&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;调用了&lt;code&gt;init&lt;/code&gt;：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb14&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb14-1&#34;&gt;&lt;a href=&#34;#cb14-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;co&#34;&gt;/* Call the initializer of the program, if any.  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-2&#34;&gt;&lt;a href=&#34;#cb14-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#ifdef SHARED&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-3&#34;&gt;&lt;a href=&#34;#cb14-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;__builtin_expect&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;GLRO&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;dl_debug_mask&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;&amp;amp;&lt;/span&gt; DL_DEBUG_IMPCALLS&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;))&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-4&#34;&gt;&lt;a href=&#34;#cb14-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    GLRO&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;dl_debug_printf&lt;span class=&#34;op&#34;&gt;)(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;initialize program: %s&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;]);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-5&#34;&gt;&lt;a href=&#34;#cb14-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#endif&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-6&#34;&gt;&lt;a href=&#34;#cb14-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;cf&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;init&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb14-7&#34;&gt;&lt;a href=&#34;#cb14-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;init&lt;span class=&#34;op&#34;&gt;)(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; __environ MAIN_AUXVEC_PARAM&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;调用主函数，同时将参数传递进去：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb15&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb15-1&#34;&gt;&lt;a href=&#34;#cb15-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;ev &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;&amp;amp;&lt;/span&gt;argv&lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;argc &lt;span class=&#34;op&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;];&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb15-2&#34;&gt;&lt;a href=&#34;#cb15-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;op&#34;&gt;......&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb15-3&#34;&gt;&lt;a href=&#34;#cb15-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;co&#34;&gt;/* Nothing fancy, just call the function.  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb15-4&#34;&gt;&lt;a href=&#34;#cb15-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  result &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; main&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; __environ MAIN_AUXVEC_PARAM&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;处理最终的结果：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb16&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb16-1&#34;&gt;&lt;a href=&#34;#cb16-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  exit&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;result&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h1 id=&#34;libc_csu_init&#34;&gt;&lt;code&gt;__libc_csu_init&lt;/code&gt;&lt;/h1&gt;
+&lt;p&gt;在许多情况下，&lt;code&gt;init&lt;/code&gt;指向的是glibc的&lt;code&gt;__libc_csu_init&lt;/code&gt;函数，这个函数定义在了&lt;code&gt;csu/elf-init.c&lt;/code&gt;中。&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb17&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb17-1&#34;&gt;&lt;a href=&#34;#cb17-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-2&#34;&gt;&lt;a href=&#34;#cb17-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;__libc_csu_init &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;envp&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-3&#34;&gt;&lt;a href=&#34;#cb17-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-4&#34;&gt;&lt;a href=&#34;#cb17-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;co&#34;&gt;/* For dynamically linked executables the preinit array is executed by&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-5&#34;&gt;&lt;a href=&#34;#cb17-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;co&#34;&gt;     the dynamic linker (before initializing any shared object).  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-6&#34;&gt;&lt;a href=&#34;#cb17-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-7&#34;&gt;&lt;a href=&#34;#cb17-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#ifndef LIBC_NONSHARED&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-8&#34;&gt;&lt;a href=&#34;#cb17-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;co&#34;&gt;/* For static executables, preinit happens right before init.  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-9&#34;&gt;&lt;a href=&#34;#cb17-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-10&#34;&gt;&lt;a href=&#34;#cb17-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; size &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; __preinit_array_end &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; __preinit_array_start&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-11&#34;&gt;&lt;a href=&#34;#cb17-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; i&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-12&#34;&gt;&lt;a href=&#34;#cb17-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;cf&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;i &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;&amp;lt;&lt;/span&gt; size&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i&lt;span class=&#34;op&#34;&gt;++)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-13&#34;&gt;&lt;a href=&#34;#cb17-13&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;      &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;__preinit_array_start &lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;i&lt;span class=&#34;op&#34;&gt;])&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-14&#34;&gt;&lt;a href=&#34;#cb17-14&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-15&#34;&gt;&lt;a href=&#34;#cb17-15&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#endif&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-16&#34;&gt;&lt;a href=&#34;#cb17-16&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-17&#34;&gt;&lt;a href=&#34;#cb17-17&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#ifndef NO_INITFINI&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-18&#34;&gt;&lt;a href=&#34;#cb17-18&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  _init &lt;span class=&#34;op&#34;&gt;();&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-19&#34;&gt;&lt;a href=&#34;#cb17-19&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#endif&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-20&#34;&gt;&lt;a href=&#34;#cb17-20&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-21&#34;&gt;&lt;a href=&#34;#cb17-21&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; size &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; __init_array_end &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; __init_array_start&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-22&#34;&gt;&lt;a href=&#34;#cb17-22&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;cf&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;&amp;lt;&lt;/span&gt; size&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i&lt;span class=&#34;op&#34;&gt;++)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-23&#34;&gt;&lt;a href=&#34;#cb17-23&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;      &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;__init_array_start &lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;i&lt;span class=&#34;op&#34;&gt;])&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb17-24&#34;&gt;&lt;a href=&#34;#cb17-24&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;去除掉其中暂时用不着的宏定义部分，这个函数做的是这些：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb18&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb18-1&#34;&gt;&lt;a href=&#34;#cb18-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  _init&lt;span class=&#34;op&#34;&gt;();&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb18-2&#34;&gt;&lt;a href=&#34;#cb18-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; size &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; __init_array_end &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; __init_array_start&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb18-3&#34;&gt;&lt;a href=&#34;#cb18-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;cf&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;&amp;lt;&lt;/span&gt; size&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i&lt;span class=&#34;op&#34;&gt;++)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb18-4&#34;&gt;&lt;a href=&#34;#cb18-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;      &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;__init_array_start &lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;i&lt;span class=&#34;op&#34;&gt;])&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这个函数实际上是整个程序的“构造函数”。首先它调用了函数&lt;code&gt;_init()&lt;/code&gt;。&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb19&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb19-1&#34;&gt;&lt;a href=&#34;#cb19-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;co&#34;&gt;/* These function symbols are provided for the .init/.fini section entry&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb19-2&#34;&gt;&lt;a href=&#34;#cb19-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;co&#34;&gt;   points automagically by the linker.  */&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb19-3&#34;&gt;&lt;a href=&#34;#cb19-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;kw&#34;&gt;extern&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; _init &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb19-4&#34;&gt;&lt;a href=&#34;#cb19-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;kw&#34;&gt;extern&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; _fini &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2 id=&#34;init&#34;&gt;&lt;code&gt;_init&lt;/code&gt;&lt;/h2&gt;
+&lt;p&gt;这边并没有给出定义，只有一个简单的声明。我们对程序进行反汇编来看看&lt;code&gt;_init()&lt;/code&gt;到底做了什么。&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;00001000 &amp;lt;_init&amp;gt;:
+    1000:       f3 0f 1e fb             endbr32 
+    1004:       53                      push   ebx
+    1005:       83 ec 08                sub    esp,0x8
+    1008:       e8 73 00 00 00          call   1080 &amp;lt;__x86.get_pc_thunk.bx&amp;gt;
+    100d:       81 c3 9f 21 00 00       add    ebx,0x219f
+    1013:       8b 83 f4 ff ff ff       mov    eax,DWORD PTR [ebx-0xc]
+    1019:       85 c0                   test   eax,eax
+    101b:       74 02                   je     101f &amp;lt;_init+0x1f&amp;gt;
+    101d:       ff d0                   call   eax
+    101f:       83 c4 08                add    esp,0x8
+    1022:       5b                      pop    ebx
+    1023:       c3                      ret    &lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;get_pc_thunk&lt;/code&gt;这个函数是用来处理&lt;code&gt;Global Offset Table&lt;/code&gt;（GOT表），这和&lt;em&gt;地址无关代码&lt;/em&gt;有关。这个函数可以获取当前指令的位置，这样加上一个偏移就可以访问一些资源。&lt;/p&gt;
+&lt;pre class=&#34;x86asm&#34;&gt;&lt;code&gt;00001080 &amp;lt;__x86.get_pc_thunk.bx&amp;gt;:
+    1080:       8b 1c 24                mov    ebx,DWORD PTR [esp]
+    1083:       c3                      ret    
+    1084:       66 90                   xchg   ax,ax ; 在x86中对应nop
+    1086:       66 90                   xchg   ax,ax
+    1088:       66 90                   xchg   ax,ax
+    108a:       66 90                   xchg   ax,ax
+    108c:       66 90                   xchg   ax,ax
+    108e:       66 90                   xchg   ax,ax&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这里有趣的是，在执行调用语句&lt;code&gt;call &amp;lt;__x86.get_pc_thunk.bx&amp;gt;&lt;/code&gt;的时候，栈顶被压入了下一条指令也就是&lt;code&gt;add ebx,0x219f&lt;/code&gt;的地址。而这个时候&lt;code&gt;mov ebx,DWORD PTR [esp]&lt;/code&gt;实际上放入&lt;code&gt;ebx&lt;/code&gt;的也就是这条指令的地址。&lt;/p&gt;
+&lt;p&gt;接下来执行的&lt;code&gt;add&lt;/code&gt;语句中&lt;code&gt;0x219f&lt;/code&gt;就是当前代码相较于位置无关代码的偏移。接下来就是将对应地址中的数据读取到寄存器&lt;code&gt;eax&lt;/code&gt;中，如果对应的地址有效那么便去执行其中的代码(&lt;code&gt;gmon_start&lt;/code&gt;/&lt;code&gt;frame_dummy&lt;/code&gt;之类的？)，否则继续也就是结束这个函数的执行。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;我看有些教程里面提到了有函数&lt;code&gt;_do_global_ctors_aux&lt;/code&gt;，但是我没有在这里找到从&lt;code&gt;_init&lt;/code&gt;开始的调用。头疼……&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;do_global_ctors_aux&#34;&gt;&lt;code&gt;_do_global_ctors_aux&lt;/code&gt;&lt;/h2&gt;
+&lt;p&gt;这个函数理论上使用来执行构造函数的，也就是“存放了全局C++对象的构造函数”。&lt;/p&gt;
+&lt;p&gt;不过麻烦的是程序编译了之后好像没有这个东西……&lt;/p&gt;
+&lt;p&gt;要是啥时候知道了再补上……&lt;/p&gt;
+&lt;p&gt;在执行了上面的部分之后（？），&lt;code&gt;_init&lt;/code&gt;函数也就到了最后结尾，接下来程序返回到&lt;code&gt;__libc_start_main&lt;/code&gt;中。&lt;/p&gt;
+&lt;h1 id=&#34;回到__libc_csu_init&#34;&gt;回到&lt;code&gt;__libc_csu_init&lt;/code&gt;&lt;/h1&gt;
+&lt;p&gt;接下来，我们执行到了这个代码段：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb22&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb22-1&#34;&gt;&lt;a href=&#34;#cb22-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;dt&#34;&gt;const&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; size &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; __init_array_end &lt;span class=&#34;op&#34;&gt;-&lt;/span&gt; __init_array_start&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb22-2&#34;&gt;&lt;a href=&#34;#cb22-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;cf&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;size_t&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;dv&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i &lt;span class=&#34;op&#34;&gt;&amp;lt;&lt;/span&gt; size&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt; i&lt;span class=&#34;op&#34;&gt;++)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb22-3&#34;&gt;&lt;a href=&#34;#cb22-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;      &lt;span class=&#34;op&#34;&gt;(*&lt;/span&gt;__init_array_start &lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;i&lt;span class=&#34;op&#34;&gt;])&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; envp&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这一段也就是在执行一系列的初始化函数：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb23&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb23-1&#34;&gt;&lt;a href=&#34;#cb23-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;co&#34;&gt;// test init&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-2&#34;&gt;&lt;a href=&#34;#cb23-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#include &lt;/span&gt;&lt;span class=&#34;im&#34;&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-3&#34;&gt;&lt;a href=&#34;#cb23-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-4&#34;&gt;&lt;a href=&#34;#cb23-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; main&lt;span class=&#34;op&#34;&gt;()&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-5&#34;&gt;&lt;a href=&#34;#cb23-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    printf&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;%s&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; __FUNCTION__&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-6&#34;&gt;&lt;a href=&#34;#cb23-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-7&#34;&gt;&lt;a href=&#34;#cb23-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-8&#34;&gt;&lt;a href=&#34;#cb23-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;dt&#34;&gt;void&lt;/span&gt; init&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;dt&#34;&gt;int&lt;/span&gt; argc&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;argv&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;**&lt;/span&gt;envp&lt;span class=&#34;op&#34;&gt;)&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-9&#34;&gt;&lt;a href=&#34;#cb23-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    printf&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;%s&lt;/span&gt;&lt;span class=&#34;sc&#34;&gt;\n&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;,&lt;/span&gt; __FUNCTION__&lt;span class=&#34;op&#34;&gt;);&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-10&#34;&gt;&lt;a href=&#34;#cb23-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-11&#34;&gt;&lt;a href=&#34;#cb23-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb23-12&#34;&gt;&lt;a href=&#34;#cb23-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;__attribute__&lt;span class=&#34;op&#34;&gt;((&lt;/span&gt;section&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;st&#34;&gt;&amp;quot;.init_array&amp;quot;&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;)))&lt;/span&gt; typeof&lt;span class=&#34;op&#34;&gt;(&lt;/span&gt;init&lt;span class=&#34;op&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;*&lt;/span&gt;__init &lt;span class=&#34;op&#34;&gt;=&lt;/span&gt; init&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;程序执行的结果也就是这样的：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb24&#34;&gt;&lt;pre
+class=&#34;sourceCode bash&#34;&gt;&lt;code class=&#34;sourceCode bash&#34;&gt;&lt;span id=&#34;cb24-1&#34;&gt;&lt;a href=&#34;#cb24-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;co&#34;&gt;# syml @ SYMLArch in ~/Temp 0 [18:57:21]&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb24-2&#34;&gt;&lt;a href=&#34;#cb24-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;$&lt;/span&gt; ./test &lt;/span&gt;
+&lt;span id=&#34;cb24-3&#34;&gt;&lt;a href=&#34;#cb24-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;init&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb24-4&#34;&gt;&lt;a href=&#34;#cb24-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;main&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在执行结束这一系列的初始化函数之后，&lt;code&gt;__libc_csu_init&lt;/code&gt;函数结束。接下来程序返回到&lt;code&gt;__libc_start_main&lt;/code&gt;中，并接着进入&lt;code&gt;main&lt;/code&gt;函数，在执行完成之后，结果会返回给&lt;code&gt;exit&lt;/code&gt;函数进行处理。&lt;/p&gt;
+&lt;h1 id=&#34;总结&#34;&gt;总结&lt;/h1&gt;
+&lt;p&gt;最后那这张网上的图来说明一下整个流程，一个程序运行的流程也就是把这棵树先序遍历了一下：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;callgraph.png&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;总的来看整个流程至少是梳理了一遍……但是说实话不少地方还是有点痛苦的，比如说glibc的源码实在是太晦涩了，包括部分函数实际上是自动生成的，并没有对应的源码能够查阅。&lt;/p&gt;
+&lt;p&gt;这一篇写下来填了一些之前留下的坑，又留了更多的坑……&lt;/p&gt;
+&lt;h1 id=&#34;参考资料&#34;&gt;参考资料&lt;/h1&gt;
+&lt;p&gt;[1] 程序员的自我修养——链接、装载与库&lt;/p&gt;
+&lt;p&gt;[2]
+http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html&lt;/p&gt;
+&lt;p&gt;[3] 深入理解Linux内核&lt;/p&gt;
+&lt;p&gt;[4] glibc源码&lt;/p&gt;
+&lt;p&gt;[5] Linux源码&lt;/p&gt;
+</content>
+        <category term="ELF" />
+        <category term="Linux" />
+        <updated>2022-03-22T08:46:07.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://symlpigeon.github.io/2022/02/10/re-review2/</id>
+        <title>ELF格式学习</title>
+        <link rel="alternate" href="http://symlpigeon.github.io/2022/02/10/re-review2/"/>
+        <content type="html">&lt;p&gt;感觉这一节基本上写成文档的翻译了……&lt;/p&gt;
+&lt;h1 id=&#34;elf文件格式&#34;&gt;ELF文件格式&lt;/h1&gt;
+&lt;p&gt;ELF(Executable and Linking
+Format)是IA-32架构下的可移植的对象文件格式。&lt;/p&gt;
+&lt;p&gt;ELF文件分为了三个类型：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;可重定向文件(relocatable
+file)：包含了代码、数据，用来和其他对象文件链接，构成可执行文件或者共享文件。&lt;/li&gt;
+&lt;li&gt;可执行文件(executable
+file)：包含了可以执行的程序，这个文件也说明了如何去创建进程的镜像。&lt;/li&gt;
+&lt;li&gt;共享对象文件(shared object
+file)：可以被链接器和其他的可重定向文件或者共享对象文件创建成新的对象文件。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;对象文件参与程序链接和程序的执行，对于这两件事情，对象文件格式提供了两个并行的视图也就是链接视图和执行视图：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;elf-fmt.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;其中，&lt;strong&gt;ELF头(ELF
+header)&lt;/strong&gt;在最开始部分，其中存放了程序的文件组织结构信息。&lt;strong&gt;节(section)&lt;/strong&gt;用于链接视图，其中存放了链接视图需要的大部分信息，包括了指令、数据、符号表和重定向信息等等。&lt;strong&gt;段(segment)&lt;/strong&gt;则是用于执行视图，包括代码段、数据段等等。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;程序头表(program header
+table)&lt;/strong&gt;用来告知系统如何去创建一个进程的镜像，如果一个文件需要用来执行（也就是可执行文件），那么它就必须得有一个程序头表，而像可重定向文件就不一定要有。&lt;strong&gt;节头表(section
+header
+table)&lt;/strong&gt;则是包括了描述文件中各个节的信息，每个节在表中都有对应的一个表项，其中包括节的名称、大小等信息。如果一个文件需要被用来链接，那么它就必须得有节头表。&lt;/p&gt;
+&lt;p&gt;在一个ELF文件中，上面的这些部分除了ELF头必须位于最开始固定的位置，其他的各个部分顺序实际上都是可以打乱的。&lt;/p&gt;
+&lt;h2 id=&#34;数据类型&#34;&gt;数据类型&lt;/h2&gt;
+&lt;p&gt;32位的对象文件中有这些数据类型：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;大小&lt;/th&gt;
+&lt;th&gt;对齐&lt;/th&gt;
+&lt;th&gt;用途&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;Elf32_Addr&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;无符号 程序地址&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;Elf32_Half&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;2&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;2&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;无符号 中等大小整数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;Elf32_Off&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;无符号 文件偏移&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;Elf32_Sword&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;有符号 大整数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;Elf32_Word&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;无符号 大整数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;unsigned char&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;无符号 小整数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;在必要的情况下，数据中会增加填充来保证4字节的对象以4字节为单位对齐。&lt;/p&gt;
+&lt;h2 id=&#34;elf头&#34;&gt;ELF头&lt;/h2&gt;
+&lt;p&gt;ELF头的定义如下：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb1&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb1-1&#34;&gt;&lt;a href=&#34;#cb1-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;pp&#34;&gt;#define EI_NIDENT   16&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-2&#34;&gt;&lt;a href=&#34;#cb1-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;kw&#34;&gt;typedef&lt;/span&gt; &lt;span class=&#34;kw&#34;&gt;struct&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-3&#34;&gt;&lt;a href=&#34;#cb1-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    &lt;span class=&#34;dt&#34;&gt;unsigned&lt;/span&gt; &lt;span class=&#34;dt&#34;&gt;char&lt;/span&gt;   e_ident&lt;span class=&#34;op&#34;&gt;[&lt;/span&gt;EI_NIDENT&lt;span class=&#34;op&#34;&gt;];&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-4&#34;&gt;&lt;a href=&#34;#cb1-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_type&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-5&#34;&gt;&lt;a href=&#34;#cb1-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_machine&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-6&#34;&gt;&lt;a href=&#34;#cb1-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Word      e_version&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-7&#34;&gt;&lt;a href=&#34;#cb1-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Addr      e_entry&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-8&#34;&gt;&lt;a href=&#34;#cb1-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Off       e_phoff&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-9&#34;&gt;&lt;a href=&#34;#cb1-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Off       e_shoff&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-10&#34;&gt;&lt;a href=&#34;#cb1-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Word      e_flags&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-11&#34;&gt;&lt;a href=&#34;#cb1-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_ehsize&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-12&#34;&gt;&lt;a href=&#34;#cb1-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_phentsize&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-13&#34;&gt;&lt;a href=&#34;#cb1-13&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_phnum&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-14&#34;&gt;&lt;a href=&#34;#cb1-14&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_shentsize&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-15&#34;&gt;&lt;a href=&#34;#cb1-15&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_shnum&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-16&#34;&gt;&lt;a href=&#34;#cb1-16&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;    Elf32_Half      e_shstrndx&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb1-17&#34;&gt;&lt;a href=&#34;#cb1-17&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这些字段的作用分别是：&lt;/p&gt;
+&lt;h3 id=&#34;e_ident&#34;&gt;e_ident&lt;/h3&gt;
+&lt;p&gt;全名是ELF Identification，实际上就是magic
+number和一些其他的信息，用来标识文件的类型是对象文件，还有机器无关的数据用来解码和翻译文件的内容。&lt;/p&gt;
+&lt;p&gt;ELF文件格式这个框架实际上是支持多种处理器架构和编码方式的，&lt;code&gt;e_ident&lt;/code&gt;这个字段的作用也就是为了这个兼容性。&lt;/p&gt;
+&lt;p&gt;e_ident的前四字节就是magic number，用来标识这个文件是ELF文件：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFMAG0&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x7f&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFMAG1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&#39;E&#39;(0x45)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFMAG2&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&#39;L&#39;(0x4c)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFMAG3&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&#39;F&#39;(0x46)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;第五个字节即e_ident[4]是&lt;code&gt;EI_CLASS&lt;/code&gt;，标识了文件对象是32位或是64位：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFCLASSNONE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;无效的文件类型&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFCLASS32&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;32位文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFCLASS64&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;64位文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;第六个字节即e_ident[5]是&lt;code&gt;EI_DATA&lt;/code&gt;，标识了文件对象的字节序：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFDATANONE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;无效的字节序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFDATA2LSB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;小端字节序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ELFDATA2MSB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;大端字节序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;第七个字节即e_ident[6]为&lt;code&gt;EI_VERSION&lt;/code&gt;，即ELF的文件版本。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;e_ident&lt;/code&gt;中的剩余部分为&lt;code&gt;EI_PAD&lt;/code&gt;，作为保留部分填充为0，尚未使用。&lt;/p&gt;
+&lt;p&gt;以一个程序为例，我们使用readelf读取其ELF头部分信息，其中e_ident字段和其中的解析结果为：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+类别:                              ELF64
+数据:                              2 补码，小端序 (little endian)
+Version:                          1 (current)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;img data-src=&#34;e_ident.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;还挺清楚的哈。&lt;/p&gt;
+&lt;h3 id=&#34;e_type&#34;&gt;e_type&lt;/h3&gt;
+&lt;p&gt;这个字段标识了对象文件的类型：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_NONE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;无类型&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_REL&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;可重定位文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_EXEC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;可执行文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_DYN&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;共享对象文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_CORE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;核心转储&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_LOPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xff00&lt;/td&gt;
+&lt;td&gt;针对处理器特定&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;ET_HIPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xffff&lt;/td&gt;
+&lt;td&gt;针对处理器特定&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;e_machine&#34;&gt;e_machine&lt;/h3&gt;
+&lt;p&gt;这个字段标识了文件对应的处理器架构：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_NONE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_M32&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;AT&amp;amp;T WE 32100&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_SPARC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;SPARC&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_386&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;Intel架构&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_68K&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;Motorola 68000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_88K&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;Motorola 88000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_860&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;7&lt;/td&gt;
+&lt;td&gt;Intel 80860&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_MIPS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;8&lt;/td&gt;
+&lt;td&gt;MIPS RS3000 大端序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;EM_MIPS_RS4_BE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;10&lt;/td&gt;
+&lt;td&gt;MIPS RS4000 大端序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;RESERVED&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;11-16&lt;/td&gt;
+&lt;td&gt;保留&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;e_version&#34;&gt;e_version&lt;/h3&gt;
+&lt;p&gt;这个字段指定了对象文件的版本。包括了两个值：&lt;code&gt;EV_NONE&lt;/code&gt;即0，代表无效版本；&lt;code&gt;EV_CURRENT&lt;/code&gt;即1代表了当前版本。&lt;/p&gt;
+&lt;h3 id=&#34;e_entry&#34;&gt;e_entry&lt;/h3&gt;
+&lt;p&gt;这个字段给了系统转交控制的虚拟地址，也就是进程开始的地址。&lt;/p&gt;
+&lt;p&gt;如果程序没有入口点，那么这个参数的字段就是0。&lt;/p&gt;
+&lt;h3 id=&#34;e_phoff&#34;&gt;e_phoff&lt;/h3&gt;
+&lt;p&gt;这个字段是程序头表位置的偏移量。如果没有程序头表，那么这个字段值为0。&lt;/p&gt;
+&lt;h3 id=&#34;e_shoff&#34;&gt;e_shoff&lt;/h3&gt;
+&lt;p&gt;这个字段是节头表位置的偏移量。如果没有节头表，那么这个字段值为0。&lt;/p&gt;
+&lt;h3 id=&#34;e_flags&#34;&gt;e_flags&lt;/h3&gt;
+&lt;p&gt;这个字段是文件有关的处理器特定的标识。&lt;/p&gt;
+&lt;h3 id=&#34;e_ehsize&#34;&gt;e_ehsize&lt;/h3&gt;
+&lt;p&gt;这个字段是ELF头的长度（以字节为单位）&lt;/p&gt;
+&lt;h3 id=&#34;e_phentsize&#34;&gt;e_phentsize&lt;/h3&gt;
+&lt;p&gt;这个字段是文件的程序头表中一个条目的长度，以字节为单位。表中的每个条目的长度都是相等的。&lt;/p&gt;
+&lt;h3 id=&#34;e_phnum&#34;&gt;e_phnum&lt;/h3&gt;
+&lt;p&gt;这个字段标识了程序头表中的条目数。如果没有程序头表，那么这个字段值为0。通过和e_phentsize字段相乘，可以计算出程序头表的大小。&lt;/p&gt;
+&lt;h3 id=&#34;e_shentsize&#34;&gt;e_shentsize&lt;/h3&gt;
+&lt;p&gt;这个字段是文件的节头表中一个条目的长度，和前面的类似。&lt;/p&gt;
+&lt;h3 id=&#34;e_shnum&#34;&gt;e_shnum&lt;/h3&gt;
+&lt;p&gt;这个字段是节头表中的条目数，和前面计算类似。&lt;/p&gt;
+&lt;p&gt;找了一个例子：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb3&#34;&gt;&lt;pre
+class=&#34;sourceCode bash&#34;&gt;&lt;code class=&#34;sourceCode bash&#34;&gt;&lt;span id=&#34;cb3-1&#34;&gt;&lt;a href=&#34;#cb3-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;fu&#34;&gt;gcc&lt;/span&gt; hello.c &lt;span class=&#34;at&#34;&gt;-o&lt;/span&gt; hello &lt;span class=&#34;at&#34;&gt;-mtune&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;=&lt;/span&gt;i386 &lt;span class=&#34;at&#34;&gt;-m32&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-2&#34;&gt;&lt;a href=&#34;#cb3-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-3&#34;&gt;&lt;a href=&#34;#cb3-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;$&lt;/span&gt; hexdump &lt;span class=&#34;at&#34;&gt;-C&lt;/span&gt; &lt;span class=&#34;at&#34;&gt;-n&lt;/span&gt; 52 hello                                                                                                             0 [23:33:44]&lt;/span&gt;
+&lt;span id=&#34;cb3-4&#34;&gt;&lt;a href=&#34;#cb3-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;00000000&lt;/span&gt;  7f 45 4c 46 01 01 01 00  00 00 00 00 00 00 00 00  &lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;.ELF............&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-5&#34;&gt;&lt;a href=&#34;#cb3-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;00000010&lt;/span&gt;  03 00 03 00 01 00 00 00  60 10 00 00 34 00 00 00  &lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;........&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;`&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;...4...&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-6&#34;&gt;&lt;a href=&#34;#cb3-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;00000020&lt;/span&gt;  9c 36 00 00 00 00 00 00  34 00 20 00 0c 00 28 00  &lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;.6......4.&lt;/span&gt; ...&lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;bu&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-7&#34;&gt;&lt;a href=&#34;#cb3-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;00000030&lt;/span&gt;  1e 00 1d 00                                       &lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;....&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;|&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-8&#34;&gt;&lt;a href=&#34;#cb3-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;00000034&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-9&#34;&gt;&lt;a href=&#34;#cb3-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-10&#34;&gt;&lt;a href=&#34;#cb3-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;ex&#34;&gt;ELF&lt;/span&gt; 头：&lt;/span&gt;
+&lt;span id=&#34;cb3-11&#34;&gt;&lt;a href=&#34;#cb3-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Magic：&lt;/span&gt;  7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 &lt;/span&gt;
+&lt;span id=&#34;cb3-12&#34;&gt;&lt;a href=&#34;#cb3-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;类别:&lt;/span&gt;                              ELF32&lt;/span&gt;
+&lt;span id=&#34;cb3-13&#34;&gt;&lt;a href=&#34;#cb3-13&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;数据:&lt;/span&gt;                              2 补码，小端序 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;little&lt;/span&gt; endian&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-14&#34;&gt;&lt;a href=&#34;#cb3-14&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Version:&lt;/span&gt;                           1 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;current&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-15&#34;&gt;&lt;a href=&#34;#cb3-15&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;OS/ABI:&lt;/span&gt;                            UNIX &lt;span class=&#34;at&#34;&gt;-&lt;/span&gt; System V&lt;/span&gt;
+&lt;span id=&#34;cb3-16&#34;&gt;&lt;a href=&#34;#cb3-16&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;ABI&lt;/span&gt; 版本:                          0&lt;/span&gt;
+&lt;span id=&#34;cb3-17&#34;&gt;&lt;a href=&#34;#cb3-17&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;类型:&lt;/span&gt;                              DYN &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;共享目标文件&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-18&#34;&gt;&lt;a href=&#34;#cb3-18&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;系统架构:&lt;/span&gt;                          Intel 80386&lt;/span&gt;
+&lt;span id=&#34;cb3-19&#34;&gt;&lt;a href=&#34;#cb3-19&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;版本:&lt;/span&gt;                              0x1&lt;/span&gt;
+&lt;span id=&#34;cb3-20&#34;&gt;&lt;a href=&#34;#cb3-20&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;入口点地址：&lt;/span&gt;              0x1060&lt;/span&gt;
+&lt;span id=&#34;cb3-21&#34;&gt;&lt;a href=&#34;#cb3-21&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;程序头起点：&lt;/span&gt;              52 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;bytes&lt;/span&gt; into file&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-22&#34;&gt;&lt;a href=&#34;#cb3-22&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Start&lt;/span&gt; of section headers:          13980 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;bytes&lt;/span&gt; into file&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-23&#34;&gt;&lt;a href=&#34;#cb3-23&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;标志：&lt;/span&gt;             0x0&lt;/span&gt;
+&lt;span id=&#34;cb3-24&#34;&gt;&lt;a href=&#34;#cb3-24&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Size&lt;/span&gt; of this header:               52 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;bytes&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-25&#34;&gt;&lt;a href=&#34;#cb3-25&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Size&lt;/span&gt; of program headers:           32 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;bytes&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-26&#34;&gt;&lt;a href=&#34;#cb3-26&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Number&lt;/span&gt; of program headers:         12&lt;/span&gt;
+&lt;span id=&#34;cb3-27&#34;&gt;&lt;a href=&#34;#cb3-27&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Size&lt;/span&gt; of section headers:           40 &lt;span class=&#34;er&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;ex&#34;&gt;bytes&lt;/span&gt;&lt;span class=&#34;kw&#34;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb3-28&#34;&gt;&lt;a href=&#34;#cb3-28&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Number&lt;/span&gt; of section headers:         30&lt;/span&gt;
+&lt;span id=&#34;cb3-29&#34;&gt;&lt;a href=&#34;#cb3-29&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  &lt;span class=&#34;ex&#34;&gt;Section&lt;/span&gt; header string table index: 29&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;img data-src=&#34;elf-header-full.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;作为对照，可以看到ELF头各个字段的意义。注意，这里数据是小端序的，比如说&lt;code&gt;60100000&lt;/code&gt;实际上是&lt;code&gt;0x00001060&lt;/code&gt;，需要区分一下。&lt;/p&gt;
+&lt;h2 id=&#34;节头表&#34;&gt;节头表&lt;/h2&gt;
+&lt;p&gt;对象文件的节头表是一系列&lt;code&gt;Elf32_Shdr&lt;/code&gt;结构体构成的数组，给出了各个节的相关信息。&lt;/p&gt;
+&lt;p&gt;这个数组中一些下标是保留的，对象文件不能使用这些下标：&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_UNDEF&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;未定义、缺失、无意义等&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_LORESERVE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xff00&lt;/td&gt;
+&lt;td&gt;指定了保留下标的下界&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_LOPROC&lt;/code&gt;~&lt;code&gt;SHN_HIPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xff00~0xff1f&lt;/td&gt;
+&lt;td&gt;保留给处理器特定的语义&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_ABS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xfff1&lt;/td&gt;
+&lt;td&gt;指定了相应参考的绝对值。相对于这个节号定义的符号不受到重定位的影响&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_COMMON&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xfff2&lt;/td&gt;
+&lt;td&gt;通用符号&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHN_HIRESERVE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xffff&lt;/td&gt;
+&lt;td&gt;指定了保留下标的上界&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;节中包括了对象文件除了ELF头、程序头表和节头表之外的所有信息。节还需要满足这些条件：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;每个节都有一个来描述它的节头（可能存在一个节头没有对应的节）。&lt;/li&gt;
+&lt;li&gt;每个节都占据一段连续字节的空间（也可能是0）。&lt;/li&gt;
+&lt;li&gt;节不能重叠。&lt;/li&gt;
+&lt;li&gt;头部和节可能不会覆盖文件中的所有空间。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;节头的数据结构定义如下：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb4&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb4-1&#34;&gt;&lt;a href=&#34;#cb4-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;kw&#34;&gt;typedef&lt;/span&gt; &lt;span class=&#34;kw&#34;&gt;struct&lt;/span&gt;&lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-2&#34;&gt;&lt;a href=&#34;#cb4-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_name&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-3&#34;&gt;&lt;a href=&#34;#cb4-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_type&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-4&#34;&gt;&lt;a href=&#34;#cb4-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_flags&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-5&#34;&gt;&lt;a href=&#34;#cb4-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Addr  sh_addr&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-6&#34;&gt;&lt;a href=&#34;#cb4-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Off   sh_offset&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-7&#34;&gt;&lt;a href=&#34;#cb4-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_size&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-8&#34;&gt;&lt;a href=&#34;#cb4-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_link&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-9&#34;&gt;&lt;a href=&#34;#cb4-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_info&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-10&#34;&gt;&lt;a href=&#34;#cb4-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_addralign&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-11&#34;&gt;&lt;a href=&#34;#cb4-11&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  Elf32_Word  sh_entsize&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb4-12&#34;&gt;&lt;a href=&#34;#cb4-12&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt; Elf32_Shdr&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3 id=&#34;具体属性定义&#34;&gt;具体属性定义&lt;/h3&gt;
+&lt;h4 id=&#34;sh_name&#34;&gt;sh_name&lt;/h4&gt;
+&lt;p&gt;这个字段是节的名字，其中的值这是指向节头的字符串节的地址，对应一个以0结尾的字符串。&lt;/p&gt;
+&lt;h4 id=&#34;sh_type&#34;&gt;sh_type&lt;/h4&gt;
+&lt;p&gt;这个字段表述了节的内容和语义。其中包括了下面这些类型：&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_NULL&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;这个节头是inactive的，没有其对应的节&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_PROGBITS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;这个节是程序定义的信息，格式和意义取决于程序&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_SYMTAB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;符号表&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_STRTAB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;字符串表&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_RELA&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;有确定的加数的重定位信息，如&lt;code&gt;ELF32_Rela&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_HASH&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;符号哈希表&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_DYNAMIC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;动态链接信息&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_NOTE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;7&lt;/td&gt;
+&lt;td&gt;文件标记信息(information that mark the file)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_NOBITS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;8&lt;/td&gt;
+&lt;td&gt;在文件中不占用空间，其他类似&lt;code&gt;SHT_PROGBITS&lt;/code&gt;。尽管这个节不会占据空间，它也会有一个理论上的大小。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_REL&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;9&lt;/td&gt;
+&lt;td&gt;没有确定加数的重定位信息，如&lt;code&gt;ELF32_Rel&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_SHLIB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;10&lt;/td&gt;
+&lt;td&gt;保留&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_DYNSYM&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;11&lt;/td&gt;
+&lt;td&gt;符号表&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_LOPROC&lt;/code&gt;~&lt;code&gt;SHT_HIPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x70000000~0x7fffffff&lt;/td&gt;
+&lt;td&gt;保留给处理器特定&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_LOUSER&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x80000000&lt;/td&gt;
+&lt;td&gt;为程序保留的地址的下界&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHT_HIUSER&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xffffffff&lt;/td&gt;
+&lt;td&gt;为程序保留的地址的上界&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h4 id=&#34;sh_flags&#34;&gt;sh_flags&lt;/h4&gt;
+&lt;p&gt;表示了各种杂项的1比特标识：&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;名称&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;作用&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHF_WRITE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x1&lt;/td&gt;
+&lt;td&gt;节中存放了在进程执行时可写的数据.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHF_ALLOC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x2&lt;/td&gt;
+&lt;td&gt;标识了这个节在程序运行时是否会占据内存。有一些控制节是不会驻留在内存镜像中的，这些节的这个属性就会被关闭.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHF_EXECINSTR&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x4&lt;/td&gt;
+&lt;td&gt;标识了这个节含有可执行的机器指令.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;SHF_MASKPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0xf0000000&lt;/td&gt;
+&lt;td&gt;保留给处理器&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h4 id=&#34;sh_addr&#34;&gt;sh_addr&lt;/h4&gt;
+&lt;p&gt;如果一个节在会出现在进程的内存镜像中，那么这个成员的值就是节中第一个字节在内存中的地址，否则就是0。&lt;/p&gt;
+&lt;h4 id=&#34;sh_offset&#34;&gt;sh_offset&lt;/h4&gt;
+&lt;p&gt;从文件开始到这个节头对应的节的第一个字节的偏移量。&lt;/p&gt;
+&lt;p&gt;上面提到了不占据空间的&lt;code&gt;SHT_NOBITS&lt;/code&gt;类型，对于这种类型，这个成员的值是这个节在理论上占据的位置。&lt;/p&gt;
+&lt;h4 id=&#34;sh_size&#34;&gt;sh_size&lt;/h4&gt;
+&lt;p&gt;这个成员以字节为单位给出了节的大小。如果是不占据空间的&lt;code&gt;SHT_NOBITS&lt;/code&gt;节，这个属性也可能不为0，只是实际上这个节不占据空间罢了。&lt;/p&gt;
+&lt;h4 id=&#34;sh_link和sh_info&#34;&gt;sh_link和sh_info&lt;/h4&gt;
+&lt;p&gt;&lt;code&gt;sh_link&lt;/code&gt;是节头表的索引链接，&lt;code&gt;sh_info&lt;/code&gt;是这个节的额外信息。这两个字段的含义取决于节的类型：&lt;/p&gt;
+&lt;p&gt;|&lt;code&gt;sh_type&lt;/code&gt;|&lt;code&gt;sh_link&lt;/code&gt;|&lt;code&gt;sh_info&lt;/code&gt;|
+|&lt;code&gt;SHT_DYNAMIC&lt;/code&gt;|这个节中条目使用到的字符串表在节头表中的下标|0|
+|&lt;code&gt;SHT_HASH&lt;/code&gt;|这个节中哈希表应用到的符号表在节头表中的下标|0|
+|&lt;code&gt;SHT_REL&lt;/code&gt;和&lt;code&gt;SHT_RELA&lt;/code&gt;|相关的符号表在节头表中的下标|重定向影响到的节在节头表中的下标|
+|&lt;code&gt;SHT_SYMTAB&lt;/code&gt;和&lt;code&gt;SHT_DYNSYM&lt;/code&gt;|内容和操作系统有关|内容和操作系统有关|
+|其他|&lt;code&gt;SHN_UNDEF&lt;/code&gt;|0|&lt;/p&gt;
+&lt;h4 id=&#34;sh_addralign&#34;&gt;sh_addralign&lt;/h4&gt;
+&lt;p&gt;有一些节要求地址对其。这个属性给出了对齐的单位，&lt;code&gt;sh_addr&lt;/code&gt;属性必须是这个值的整数倍。&lt;/p&gt;
+&lt;p&gt;这个属性的值应该是0或者2的整数次幂，如果值为0或者1，则表示不需要对齐。&lt;/p&gt;
+&lt;h4 id=&#34;sh_entsize&#34;&gt;sh_entsize&lt;/h4&gt;
+&lt;p&gt;如符号表等一些节中的内容是固定长度的一系列条目，对于这样的节，这个属性给出了以字节为单位的每个条目的大小。如果是0，则表示这个节中没有放置固定长度条目表。&lt;/p&gt;
+&lt;h3 id=&#34;index-0-节&#34;&gt;Index 0 节&lt;/h3&gt;
+&lt;p&gt;前面提到了下标为0的节是&lt;code&gt;SHN_UNDEF&lt;/code&gt;，但是这个节实际上是存在的，也就是说比如这个程序有4个节，那么下标是0～3，其中也就包括了这个&lt;code&gt;SHN_UNDEF&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;其中的条目是这样的：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;属性&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;作用&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_name&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有名称&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_type&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;SHT_NULL&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;inactive&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_flags&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有标志&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_addr&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有地址&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_offset&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有偏移&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_size&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有大小&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_link&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;SHN_UNDEF&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;没有链接&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_info&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有信息&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_addralign&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有对齐&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;sh_entsize&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;没有条目&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;总之啥也没有。&lt;/p&gt;
+&lt;h3 id=&#34;特殊的节&#34;&gt;特殊的节&lt;/h3&gt;
+&lt;p&gt;可执行文件的创建过程需要经过链接，链接器可以解决不同对象文件之间的依赖关系、调整对象文件之间的引用并重定位代码。这一个过程需要一些特定的节内部存储的信息，如&lt;code&gt;.dynamic&lt;/code&gt;节中的信息。&lt;/p&gt;
+&lt;p&gt;实际上，操作系统支持两种链接方式，即动态链接和静态链接。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;静态链接：静态地绑定一系列的对象文件、系统库和其他的库文件，解析引用关系并且创建一个自包含的可执行文件。&lt;/li&gt;
+&lt;li&gt;动态链接：将一系列对象文件、库、系统资源和其他的共享库链接在一起创建一个可执行文件。在加载这个可执行文件的时候，那些动态链接库和共享资源也必须可用。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;此外，还有一些节用来支持调试、程序控制等等。&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;spec-section.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;下面是这些节的作用：&lt;/p&gt;
+&lt;h4 id=&#34;bss&#34;&gt;.bss&lt;/h4&gt;
+&lt;p&gt;这个节存储了没有初始化的全局数据，在程序开始运行时，系统会将这些数据置为0。&lt;/p&gt;
+&lt;p&gt;这个节实际并不占据文件空间（&lt;code&gt;SHT_NOBITS&lt;/code&gt;）。&lt;/p&gt;
+&lt;h4 id=&#34;comment&#34;&gt;.comment&lt;/h4&gt;
+&lt;p&gt;包含了版本控制信息&lt;/p&gt;
+&lt;h4 id=&#34;data和.data1&#34;&gt;.data和.data1&lt;/h4&gt;
+&lt;p&gt;包含了已经初始化的全局数据。&lt;/p&gt;
+&lt;h4 id=&#34;debug&#34;&gt;.debug&lt;/h4&gt;
+&lt;p&gt;包含了用于符号调试的信息。&lt;/p&gt;
+&lt;h4 id=&#34;dynamic&#34;&gt;.dynamic&lt;/h4&gt;
+&lt;p&gt;包含了动态链接信息。&lt;/p&gt;
+&lt;h4 id=&#34;hash&#34;&gt;.hash&lt;/h4&gt;
+&lt;p&gt;表明这个节里面有符号哈希表。&lt;/p&gt;
+&lt;h4 id=&#34;line&#34;&gt;.line&lt;/h4&gt;
+&lt;p&gt;包含了用于调试的行号等信息。&lt;/p&gt;
+&lt;h4 id=&#34;note&#34;&gt;.note&lt;/h4&gt;
+&lt;p&gt;包含了程序文件标记相关的信息。&lt;/p&gt;
+&lt;h4 id=&#34;rodata和.rodata1&#34;&gt;.rodata和.rodata1&lt;/h4&gt;
+&lt;p&gt;程序中的只读数据。&lt;/p&gt;
+&lt;h4 id=&#34;shstrtab&#34;&gt;.shstrtab&lt;/h4&gt;
+&lt;p&gt;节的名称。&lt;/p&gt;
+&lt;h4 id=&#34;strtab&#34;&gt;.strtab&lt;/h4&gt;
+&lt;p&gt;这个节中包括了主要是和符号表有关的字符串。&lt;/p&gt;
+&lt;h4 id=&#34;symtab&#34;&gt;.symtab&lt;/h4&gt;
+&lt;p&gt;这个节中包括了符号表。&lt;/p&gt;
+&lt;h4 id=&#34;text&#34;&gt;.text&lt;/h4&gt;
+&lt;p&gt;这个节中包括了可执行的指令。&lt;/p&gt;
+&lt;p&gt;以一个程序（&lt;code&gt;readelf -S&lt;/code&gt;）为例，其中包括了下面这些节：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;section-type.jpg&#34; /&gt;&lt;/p&gt;
+&lt;h3 id=&#34;字符串表&#34;&gt;字符串表&lt;/h3&gt;
+&lt;p&gt;字符串表中存储的是以零字符结尾的字符串，其中包括了符号的名字、节的名字等等。对于字符串表的引用就是一个在字符串表中的下标。&lt;/p&gt;
+&lt;p&gt;字符串表的第一个字符是零字符，如果一个名称指向这个字符，则表示没有名称或者这个名称为空。同时，字符串表最后一个字符是零字符，这样的目的是使得所有的字符串都能够正常结束。&lt;/p&gt;
+&lt;p&gt;实际上字符串表可以为空（其&lt;code&gt;sh_size&lt;/code&gt;字段为0），这样，但是所有对这个字符串表的引用下标必须都是0。&lt;/p&gt;
+&lt;p&gt;通过&lt;code&gt;readelf -x&lt;/code&gt;命令读取字符串表&lt;code&gt;.strtab&lt;/code&gt;所在的节，能够得到下面的信息：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;strtab.jpg&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;可以看到其开头和结尾都是字节0x00，每个字符串的结束也都是字节0x00。&lt;/p&gt;
+&lt;h2 id=&#34;程序头表&#34;&gt;程序头表&lt;/h2&gt;
+&lt;p&gt;程序头表中存储的一系列数据结构可以用来告知系统执行这个程序需要那些信息。表中的每一个条目代表了对应的一个段的有关信息，一个段可以包括多个节。&lt;/p&gt;
+&lt;p&gt;程序头表中单个的数据结构定义是这样的：&lt;/p&gt;
+&lt;div class=&#34;sourceCode&#34; id=&#34;cb5&#34;&gt;&lt;pre class=&#34;sourceCode c&#34;&gt;&lt;code class=&#34;sourceCode c&#34;&gt;&lt;span id=&#34;cb5-1&#34;&gt;&lt;a href=&#34;#cb5-1&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;kw&#34;&gt;typedef&lt;/span&gt; &lt;span class=&#34;kw&#34;&gt;struct&lt;/span&gt; &lt;span class=&#34;op&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-2&#34;&gt;&lt;a href=&#34;#cb5-2&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Word  p_type&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-3&#34;&gt;&lt;a href=&#34;#cb5-3&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Off   p_offset&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-4&#34;&gt;&lt;a href=&#34;#cb5-4&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Addr  p_vaddr&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-5&#34;&gt;&lt;a href=&#34;#cb5-5&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Addr  p_paddr&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-6&#34;&gt;&lt;a href=&#34;#cb5-6&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Word  p_filesz&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-7&#34;&gt;&lt;a href=&#34;#cb5-7&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Word  p_memsz&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-8&#34;&gt;&lt;a href=&#34;#cb5-8&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Word  p_flags&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-9&#34;&gt;&lt;a href=&#34;#cb5-9&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;  ELF32_Word  p_align&lt;span class=&#34;op&#34;&gt;;&lt;/span&gt;&lt;/span&gt;
+&lt;span id=&#34;cb5-10&#34;&gt;&lt;a href=&#34;#cb5-10&#34; aria-hidden=&#34;true&#34; tabindex=&#34;-1&#34;&gt;&lt;/a&gt;&lt;span class=&#34;op&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;其中各个字段的作用如下：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;字段名称&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_type&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;对应的段的类型或者如何解释这个段中的元素&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_offset&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;段第一个字节相对于文件开始位置的偏移&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_vaddr&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;段在内存中驻留的第一个字节的位置&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_paddr&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;在物理寻址相关的系统上，用来作为段的物理地址（针对特定系统）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_filesz&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;以字节为单位的，段的大小（可以是0）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_memsz&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;以字节为单位的，段需要占据的内存空间（可以是0）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_flags&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;段的标志&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;p_align&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;段对齐，具体和前面节的对齐类似&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;p_type&#34;&gt;p_type&lt;/h3&gt;
+&lt;p&gt;根据&lt;code&gt;p_type&lt;/code&gt;的取值，段有这些类型：&lt;/p&gt;
+&lt;table&gt;
+&lt;colgroup&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;col style=&#34;width: 33%&#34; /&gt;
+&lt;/colgroup&gt;
+&lt;thead&gt;
+&lt;tr class=&#34;header&#34;&gt;
+&lt;th&gt;类型&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_NULL&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;未使用或者未定义的。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_LOAD&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;表明一个可以加载的段，这个段中的字节会映射到内存中。如果段分配的内存大于文件实际的大小，多余的空间会被置0。当然分配的内存空间一定要大于文件中段的大小。数据段、代码段都是这种类型。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_DYNAMIC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;标记了动态链接信息。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_INTERP&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;其中指明了解释器的路径。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_NOTE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;指明了辅助信息的位置和文件的大小。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_SHLIB&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;保留。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;odd&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_PHDR&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;指明了在文件中和在内存中程序头表的位置和大小。&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr class=&#34;even&#34;&gt;
+&lt;td&gt;&lt;code&gt;PT_LOPROC&lt;/code&gt;~&lt;code&gt;PT_HIPROC&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;0x70000000~0x7fffffff&lt;/td&gt;
+&lt;td&gt;保留给处理器特定语义&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;通过&lt;code&gt;readelf -l&lt;/code&gt;读取一个程序的程序头表信息：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;segments.jpg&#34; /&gt;&lt;/p&gt;
+&lt;h1 id=&#34;总结&#34;&gt;总结&lt;/h1&gt;
+&lt;p&gt;这边其实还有好多可以说的内容，比如说ELF的符号表、重定向这些，以及程序的链接和装载等，以后开一个坑出来专门讲。&lt;/p&gt;
+&lt;h1 id=&#34;参考资料&#34;&gt;参考资料&lt;/h1&gt;
+&lt;p&gt;[1] 《软件逆向工程——原理与实践》，孙聪
+等著，西安电子科技大学出版社。&lt;/p&gt;
+&lt;p&gt;[2] Tool Interface Standard (TIS) Executable and Linking Format (ELF)
+Specification, v1.2&lt;/p&gt;
+</content>
+        <category term="逆向工程" />
+        <category term="x86" />
+        <category term="ELF" />
+        <updated>2022-02-10T08:01:40.000Z</updated>
+    </entry>
+</feed>

