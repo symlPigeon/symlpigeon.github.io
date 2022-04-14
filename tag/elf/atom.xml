@@ -4,15 +4,20 @@
     <title>symlpigeon&#39;s little gensokyo • Posts by &#34;elf&#34; tag</title>
     <link href="http://symlpigeon.github.io" />
     <updated>2022-03-22T08:46:07.000Z</updated>
-    <category term="漏洞复现" />
+    <category term="远程代码执行" />
     <category term="对称密码和安全" />
     <category term="安全多方计算" />
     <category term="ELF" />
     <category term="Linux" />
+    <category term="网络协议安全" />
+    <category term="密钥分配" />
+    <category term="用户认证" />
     <category term="逆向工程" />
     <category term="x86" />
-    <category term="公钥密码和数学" />
-    <category term="Pwn" />
+    <category term="数论" />
+    <category term="整数环上的密码" />
+    <category term="椭圆曲线" />
+    <category term="栈溢出" />
     <entry>
         <id>http://symlpigeon.github.io/2022/03/22/program-start/</id>
         <title>关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</title>

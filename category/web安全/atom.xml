@@ -4,15 +4,20 @@
     <title>symlpigeon&#39;s little gensokyo • Posts by &#34;web安全&#34; category</title>
     <link href="http://symlpigeon.github.io" />
     <updated>2021-12-06T14:33:32.000Z</updated>
-    <category term="漏洞复现" />
+    <category term="远程代码执行" />
     <category term="对称密码和安全" />
     <category term="安全多方计算" />
     <category term="ELF" />
     <category term="Linux" />
+    <category term="网络协议安全" />
+    <category term="密钥分配" />
+    <category term="用户认证" />
     <category term="逆向工程" />
     <category term="x86" />
-    <category term="公钥密码和数学" />
-    <category term="Pwn" />
+    <category term="数论" />
+    <category term="整数环上的密码" />
+    <category term="椭圆曲线" />
+    <category term="栈溢出" />
     <entry>
         <id>http://symlpigeon.github.io/2021/12/06/CVE-2021-39503/</id>
         <title>CVE-2021-39503复现</title>
@@ -115,7 +120,7 @@ action=add
 &lt;p&gt;做这个漏洞复现的主要目的在于帮人写掉一次 Web 安全大作业，于是随手搜了一个 CVE，抱着根本看不懂的决心去复现的（x），结果发现这个漏洞是真的极其弱智……&lt;/p&gt;
 &lt;p&gt;没意思，下次不整了。&lt;/p&gt;
 </content>
-        <category term="漏洞复现" />
+        <category term="远程代码执行" />
         <updated>2021-12-06T14:33:32.000Z</updated>
     </entry>
 </feed>

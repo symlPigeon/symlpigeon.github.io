@@ -4,15 +4,20 @@
     <title>symlpigeon&#39;s little gensokyo • Posts by &#34;二进制&#34; category</title>
     <link href="http://symlpigeon.github.io" />
     <updated>2022-04-07T03:51:40.000Z</updated>
-    <category term="漏洞复现" />
+    <category term="远程代码执行" />
     <category term="对称密码和安全" />
     <category term="安全多方计算" />
     <category term="ELF" />
     <category term="Linux" />
+    <category term="网络协议安全" />
+    <category term="密钥分配" />
+    <category term="用户认证" />
     <category term="逆向工程" />
     <category term="x86" />
-    <category term="公钥密码和数学" />
-    <category term="Pwn" />
+    <category term="数论" />
+    <category term="整数环上的密码" />
+    <category term="椭圆曲线" />
+    <category term="栈溢出" />
     <entry>
         <id>http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/</id>
         <title>针对Typora的逆向分析</title>
@@ -356,7 +361,7 @@ Symbol table &#39;.dynsym&#39; contains 7 entries:
 &lt;p&gt;[1] &lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9jdGYtd2lraS5vcmcvcHduL2xpbnV4L3VzZXItbW9kZS9zdGFja292ZXJmbG93L3g4Ni9iYXNpYy1yb3AvIzI=&#34;&gt;CTFWiki 栈溢出 - 基本 ROP&lt;/span&gt;&lt;/p&gt;
 &lt;p&gt;[2] &lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9yZWZzcGVjcy5saW51eGZvdW5kYXRpb24ub3JnL2VsZi9lbGYucGRm&#34;&gt;Executable and Linkable Format(ELF) Specification&lt;/span&gt;&lt;/p&gt;
 </content>
-        <category term="Pwn" />
+        <category term="栈溢出" />
         <updated>2022-03-30T05:07:21.000Z</updated>
     </entry>
     <entry>
@@ -677,7 +682,7 @@ Unique gadgets found: 1
 &lt;h1 id=&#34;参考资料&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#参考资料&#34;&gt;#&lt;/a&gt; 参考资料&lt;/h1&gt;
 &lt;p&gt;[1] &lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9jdGYtd2lraS5vcmcvcHduL2xpbnV4L3VzZXItbW9kZS9zdGFja292ZXJmbG93L3g4Ni9zdGFjay1pbnRyby8=&#34;&gt;https://ctf-wiki.org/pwn/linux/user-mode/stackoverflow/x86/stack-intro/&lt;/span&gt;&lt;/p&gt;
 </content>
-        <category term="Pwn" />
+        <category term="栈溢出" />
         <updated>2022-03-28T13:29:58.000Z</updated>
     </entry>
     <entry>

