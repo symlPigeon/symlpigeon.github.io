@@ -770,7 +770,7 @@ PC = 00000111
 &lt;div class=&#34;mermaid&#34;&gt;sequenceDiagram
 Alice-&gt;&gt;Alice: 随机数r_A∈[1,n-1];
 Alice-&gt;&gt;Alice: 椭圆曲线点R_A=[r_A]G=(x_1,y_1);
-Alice-&gt;&gt;Bob: R_A
+Alice-&gt;&gt;Bob: R_A;
 Bob-&gt;&gt;Bob: 随机数r_B∈[1,n-1];
 Bob-&gt;&gt;Bob: 椭圆曲线点R_B=[r_B]G=(x_2,y_2);
 Bob-&gt;&gt;Bob: X_2=2^w+(x_2&amp;(2^w-1));
