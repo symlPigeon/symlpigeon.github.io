@@ -18,14 +18,17 @@
         <category>逆向工程</category>
         <category>x86</category>
         <category>数论</category>
-        <category>整数环上的密码</category>
         <category>椭圆曲线</category>
         <category>栈溢出</category>
+        <category>分组密码工作模式</category>
+        <category>Kerberos</category>
+        <category>RSA</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2022/01/02/cbc-padding-oracle-attack/</guid>
             <title>CBC Padding Oracle Attack</title>
             <link>http://symlpigeon.github.io/2022/01/02/cbc-padding-oracle-attack/</link>
             <category>对称密码和安全</category>
+            <category>分组密码工作模式</category>
             <pubDate>Sun, 02 Jan 2022 20:28:50 +0800</pubDate>
             <description><![CDATA[ &lt;h1 id=&#34;分组密码cbc模式&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#分组密码cbc模式&#34;&gt;#&lt;/a&gt; 分组密码 CBC 模式&lt;/h1&gt;
 &lt;p&gt;对于一般的分组密码来说，简单的 ECB 模式实际中是不应该使用的，因为它对于 Many-Time Key 的情景来说并不是语义安全的。&lt;/p&gt;
@@ -80,6 +83,7 @@ D(k, c_i)\oplus c_{i-1}, &amp;amp;i\ge2
             <title>Byte-at-a-time ECB Decryption</title>
             <link>http://symlpigeon.github.io/2021/12/09/aes-ecb-attack/</link>
             <category>对称密码和安全</category>
+            <category>分组密码工作模式</category>
             <pubDate>Thu, 09 Dec 2021 22:29:19 +0800</pubDate>
             <description><![CDATA[ &lt;p&gt;这个是现代密码学课的作业，因为还是挺好玩的而且我还把内容给忘掉了，所以说重写一遍记一下，针对 AES 不同模式的攻击还要分上好几次来写。&lt;/p&gt;
 &lt;h1 id=&#34;aes-ecb-mode&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#aes-ecb-mode&#34;&gt;#&lt;/a&gt; AES ECB mode&lt;/h1&gt;

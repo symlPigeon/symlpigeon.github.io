@@ -18,9 +18,11 @@
         <category>逆向工程</category>
         <category>x86</category>
         <category>数论</category>
-        <category>整数环上的密码</category>
         <category>椭圆曲线</category>
         <category>栈溢出</category>
+        <category>分组密码工作模式</category>
+        <category>Kerberos</category>
+        <category>RSA</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2022/03/23/mpc-gmw/</guid>
             <title>多方安全计算——GMW协议</title>

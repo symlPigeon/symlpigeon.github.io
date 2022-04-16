@@ -15,9 +15,11 @@
     <category term="逆向工程" />
     <category term="x86" />
     <category term="数论" />
-    <category term="整数环上的密码" />
     <category term="椭圆曲线" />
     <category term="栈溢出" />
+    <category term="分组密码工作模式" />
+    <category term="Kerberos" />
+    <category term="RSA" />
     <entry>
         <id>http://symlpigeon.github.io/2022/02/10/re-review2/</id>
         <title>ELF格式学习</title>
