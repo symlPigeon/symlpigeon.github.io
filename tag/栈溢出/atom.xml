@@ -6,20 +6,20 @@
     <updated>2022-03-30T05:07:21.000Z</updated>
     <category term="远程代码执行" />
     <category term="对称密码和安全" />
+    <category term="分组密码工作模式" />
     <category term="安全多方计算" />
     <category term="ELF" />
     <category term="Linux" />
     <category term="网络协议安全" />
     <category term="密钥分配" />
     <category term="用户认证" />
+    <category term="Kerberos" />
     <category term="逆向工程" />
     <category term="x86" />
     <category term="数论" />
     <category term="椭圆曲线" />
-    <category term="栈溢出" />
-    <category term="分组密码工作模式" />
-    <category term="Kerberos" />
     <category term="RSA" />
+    <category term="栈溢出" />
     <entry>
         <id>http://symlpigeon.github.io/2022/03/30/stackoverflow-ret2libc/</id>
         <title>栈溢出，ret2libc</title>

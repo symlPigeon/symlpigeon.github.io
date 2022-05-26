@@ -6,20 +6,20 @@
     <updated>2021-12-06T14:33:32.000Z</updated>
     <category term="远程代码执行" />
     <category term="对称密码和安全" />
+    <category term="分组密码工作模式" />
     <category term="安全多方计算" />
     <category term="ELF" />
     <category term="Linux" />
     <category term="网络协议安全" />
     <category term="密钥分配" />
     <category term="用户认证" />
+    <category term="Kerberos" />
     <category term="逆向工程" />
     <category term="x86" />
     <category term="数论" />
     <category term="椭圆曲线" />
-    <category term="栈溢出" />
-    <category term="分组密码工作模式" />
-    <category term="Kerberos" />
     <category term="RSA" />
+    <category term="栈溢出" />
     <entry>
         <id>http://symlpigeon.github.io/2021/12/06/CVE-2021-39503/</id>
         <title>CVE-2021-39503复现</title>
