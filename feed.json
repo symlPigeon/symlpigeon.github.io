@@ -5,6 +5,18 @@
     "home_page_url": "http://symlpigeon.github.io",
     "items": [
         {
+            "id": "http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/",
+            "url": "http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/",
+            "title": "密钥分配和用户认证协议-III",
+            "date_published": "2022-06-02T03:06:11.000Z",
+            "content_html": "<h1 id=\"非对称加密的对称密钥分发\"><a class=\"anchor\" href=\"#非对称加密的对称密钥分发\">#</a> 非对称加密的对称密钥分发</h1>\n<p>一种最朴素的密钥分发思路是这样的 (Merkle, 1979)：</p>\n<pre class=\"mermaid\">sequenceDiagram\n    loop Daily query\n        Alice->>Bob: Hello Bob, how are you?\n        alt is sick\n            Bob->>Alice: Not so good :(\n        else is well\n            Bob->>Alice: Feeling fresh like a daisy\n        end\n        opt Extra response\n            Bob->>Alice: Thanks for asking\n        end\n    end</pre>\n<h1 id=\"参考资料\"><a class=\"anchor\" href=\"#参考资料\">#</a> 参考资料</h1>\n<p>[1] 网络安全基础 —— 应用与标准（第六版），William Stallings.</p>\n<p>[2] 密码编码学与网络安全 —— 原理与实践（第八版），William Stallings.</p>\n",
+            "tags": [
+                "公钥证书",
+                "PKI",
+                "X.509"
+            ]
+        },
+        {
             "id": "http://symlpigeon.github.io/2022/04/16/protocol-secure-chap4-2/",
             "url": "http://symlpigeon.github.io/2022/04/16/protocol-secure-chap4-2/",
             "title": "密钥分配和用户认证协议-II",
@@ -202,7 +214,7 @@
             "url": "http://symlpigeon.github.io/2021/12/03/HelloWorld/",
             "title": "HelloWorld",
             "date_published": "2021-12-02T17:07:17.000Z",
-            "content_html": "<h1 id=\"hello-world\"><a class=\"anchor\" href=\"#hello-world\">#</a> Hello World</h1>\n<p>先前搭了一个站实在是懒得继续维护下去了，而且实在是不想折腾初学的时候配的那个漏洞百出的环境，所以说就直接坑了。而且挂在腾讯云上面的站域名还做了备案，过一阵子就有人来打电话太烦了受不了。</p>\n<p>这么想来不如还是重新搞个个人主页算了，反正之前写的也是一堆烂摊子不想再看了，也完全无技术力，而且挂在 github pages 上面还能省了备案的麻烦 x</p>\n<p><ins>为了不出毛病所以说凑一个 hello world 写在这</ins>。</p>\n<div class=\"note info\">\n<p>mermaid 到底该怎么配置</p>\n</div>\n<details class=\"info\"><summary></summary><div>\n<p>test</p>\n</div></details>\n<p><ruby>漢字<rp> (</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n<figure class=\"highlight c\"><figcaption data-lang=\"c\"></figcaption><table><tr><td data-num=\"1\"></td><td><pre><span class=\"token keyword\">int</span> <span class=\"token function\">main</span><span class=\"token punctuation\">(</span><span class=\"token punctuation\">)</span><span class=\"token punctuation\">&#123;</span></pre></td></tr><tr><td data-num=\"2\"></td><td><pre>    <span class=\"token keyword\">return</span> <span class=\"token number\">0</span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"3\"></td><td><pre><span class=\"token punctuation\">&#125;</span></pre></td></tr></table></figure><table>\n<thead>\n<tr>\n<th>a</th>\n<th>b</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1</td>\n<td>2</td>\n</tr>\n<tr>\n<td>3</td>\n<td>4</td>\n</tr>\n</tbody>\n</table>\n<pre class=\"mermaid\">graph LR\n    A[Square Rect] -- Link text --> B((Circle))\n    A --> C(Round Rect)\n    B --> D{Rhombus<sub>1</sub>}\n    C --> D</pre>",
+            "content_html": "<h1 id=\"hello-world\"><a class=\"anchor\" href=\"#hello-world\">#</a> Hello World</h1>\n<p>先前搭了一个站实在是懒得继续维护下去了，而且实在是不想折腾初学的时候配的那个漏洞百出的环境，所以说就直接坑了。而且挂在腾讯云上面的站域名还做了备案，过一阵子就有人来打电话太烦了受不了。</p>\n<p>这么想来不如还是重新搞个个人主页算了，反正之前写的也是一堆烂摊子不想再看了，也完全无技术力，而且挂在 github pages 上面还能省了备案的麻烦 x</p>\n<p><ins>为了不出毛病所以说凑一个 hello world 写在这</ins>。</p>\n<div class=\"note info\">\n<p>mermaid 到底该怎么配置</p>\n</div>\n<details class=\"info\"><summary></summary><div>\n<p>test</p>\n</div></details>\n<p><ruby>漢字<rp> (</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n<figure class=\"highlight c\"><figcaption data-lang=\"c\"></figcaption><table><tr><td data-num=\"1\"></td><td><pre><span class=\"token keyword\">int</span> <span class=\"token function\">main</span><span class=\"token punctuation\">(</span><span class=\"token punctuation\">)</span><span class=\"token punctuation\">&#123;</span></pre></td></tr><tr><td data-num=\"2\"></td><td><pre>    <span class=\"token keyword\">return</span> <span class=\"token number\">0</span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"3\"></td><td><pre><span class=\"token punctuation\">&#125;</span></pre></td></tr></table></figure><table>\n<thead>\n<tr>\n<th>a</th>\n<th>b</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1</td>\n<td>2</td>\n</tr>\n<tr>\n<td>3</td>\n<td>4</td>\n</tr>\n</tbody>\n</table>\n<pre class=\"mermaid\">sequenceDiagram\n    participant A as Alice;\n    participant J as John;\n\n    A->>J: Hello John, how are you?;\n    J->>A: Great!;</pre>",
             "tags": []
         }
     ]

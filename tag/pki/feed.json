@@ -1,0 +1,20 @@
+{
+    "version": "https://jsonfeed.org/version/1",
+    "title": "symlpigeon's little gensokyo • All posts by \"pki\" tag",
+    "description": "夢違え、幻の朝靄の世界の記憶を",
+    "home_page_url": "http://symlpigeon.github.io",
+    "items": [
+        {
+            "id": "http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/",
+            "url": "http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/",
+            "title": "密钥分配和用户认证协议-III",
+            "date_published": "2022-06-02T03:06:11.000Z",
+            "content_html": "<h1 id=\"非对称加密的对称密钥分发\"><a class=\"anchor\" href=\"#非对称加密的对称密钥分发\">#</a> 非对称加密的对称密钥分发</h1>\n<p>一种最朴素的密钥分发思路是这样的 (Merkle, 1979)：</p>\n<pre class=\"mermaid\">sequenceDiagram\n    loop Daily query\n        Alice->>Bob: Hello Bob, how are you?\n        alt is sick\n            Bob->>Alice: Not so good :(\n        else is well\n            Bob->>Alice: Feeling fresh like a daisy\n        end\n        opt Extra response\n            Bob->>Alice: Thanks for asking\n        end\n    end</pre>\n<h1 id=\"参考资料\"><a class=\"anchor\" href=\"#参考资料\">#</a> 参考资料</h1>\n<p>[1] 网络安全基础 —— 应用与标准（第六版），William Stallings.</p>\n<p>[2] 密码编码学与网络安全 —— 原理与实践（第八版），William Stallings.</p>\n",
+            "tags": [
+                "公钥证书",
+                "PKI",
+                "X.509"
+            ]
+        }
+    ]
+}

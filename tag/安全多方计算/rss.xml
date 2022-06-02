@@ -17,6 +17,9 @@
         <category>密钥分配</category>
         <category>用户认证</category>
         <category>Kerberos</category>
+        <category>公钥证书</category>
+        <category>PKI</category>
+        <category>X.509</category>
         <category>逆向工程</category>
         <category>x86</category>
         <category>数论</category>

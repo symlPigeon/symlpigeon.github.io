@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<rss version="2.0">
+    <channel>
+        <title>symlpigeon&#39;s little gensokyo • Posts by &#34;pki&#34; tag</title>
+        <link>http://symlpigeon.github.io</link>
+        <description>夢違え、幻の朝靄の世界の記憶を</description>
+        <language>zh-CN</language>
+        <pubDate>Thu, 02 Jun 2022 11:06:11 +0800</pubDate>
+        <lastBuildDate>Thu, 02 Jun 2022 11:06:11 +0800</lastBuildDate>
+        <category>远程代码执行</category>
+        <category>对称密码和安全</category>
+        <category>分组密码工作模式</category>
+        <category>安全多方计算</category>
+        <category>ELF</category>
+        <category>Linux</category>
+        <category>网络协议安全</category>
+        <category>密钥分配</category>
+        <category>用户认证</category>
+        <category>Kerberos</category>
+        <category>公钥证书</category>
+        <category>PKI</category>
+        <category>X.509</category>
+        <category>逆向工程</category>
+        <category>x86</category>
+        <category>数论</category>
+        <category>椭圆曲线</category>
+        <category>RSA</category>
+        <category>栈溢出</category>
+        <item>
+            <guid isPermalink="true">http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/</guid>
+            <title>密钥分配和用户认证协议-III</title>
+            <link>http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/</link>
+            <category>公钥证书</category>
+            <category>PKI</category>
+            <category>X.509</category>
+            <pubDate>Thu, 02 Jun 2022 11:06:11 +0800</pubDate>
+            <description><![CDATA[ &lt;h1 id=&#34;非对称加密的对称密钥分发&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#非对称加密的对称密钥分发&#34;&gt;#&lt;/a&gt; 非对称加密的对称密钥分发&lt;/h1&gt;
+&lt;p&gt;一种最朴素的密钥分发思路是这样的 (Merkle, 1979)：&lt;/p&gt;
+&lt;pre class=&#34;mermaid&#34;&gt;sequenceDiagram
+    loop Daily query
+        Alice-&gt;&gt;Bob: Hello Bob, how are you?
+        alt is sick
+            Bob-&gt;&gt;Alice: Not so good :(
+        else is well
+            Bob-&gt;&gt;Alice: Feeling fresh like a daisy
+        end
+        opt Extra response
+            Bob-&gt;&gt;Alice: Thanks for asking
+        end
+    end&lt;/pre&gt;
+&lt;h1 id=&#34;参考资料&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#参考资料&#34;&gt;#&lt;/a&gt; 参考资料&lt;/h1&gt;
+&lt;p&gt;[1] 网络安全基础 —— 应用与标准（第六版），William Stallings.&lt;/p&gt;
+&lt;p&gt;[2] 密码编码学与网络安全 —— 原理与实践（第八版），William Stallings.&lt;/p&gt;
+ ]]></description>
+        </item>
+    </channel>
+</rss>

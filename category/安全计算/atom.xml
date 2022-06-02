@@ -14,6 +14,9 @@
     <category term="密钥分配" />
     <category term="用户认证" />
     <category term="Kerberos" />
+    <category term="公钥证书" />
+    <category term="PKI" />
+    <category term="X.509" />
     <category term="逆向工程" />
     <category term="x86" />
     <category term="数论" />
