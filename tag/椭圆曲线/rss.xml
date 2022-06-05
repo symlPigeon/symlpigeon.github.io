@@ -26,6 +26,9 @@
         <category>椭圆曲线</category>
         <category>RSA</category>
         <category>栈溢出</category>
+        <category>EAP</category>
+        <category>802.1X</category>
+        <category>网络访问控制</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2021/12/03/sm2/</guid>
             <title>国密SM2算法学习</title>

@@ -23,6 +23,9 @@
     <category term="椭圆曲线" />
     <category term="RSA" />
     <category term="栈溢出" />
+    <category term="EAP" />
+    <category term="802.1X" />
+    <category term="网络访问控制" />
     <entry>
         <id>http://symlpigeon.github.io/2022/03/16/wiener-attack/</id>
         <title>Wiener&#39;s Attack</title>
