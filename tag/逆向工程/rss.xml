@@ -29,6 +29,8 @@
         <category>EAP</category>
         <category>802.1X</category>
         <category>网络访问控制</category>
+        <category>TLS</category>
+        <category>传输层安全</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2022/04/07/typora-reverse-engineering/</guid>
             <title>针对Typora的逆向分析</title>

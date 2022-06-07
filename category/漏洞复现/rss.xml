@@ -29,6 +29,8 @@
         <category>EAP</category>
         <category>802.1X</category>
         <category>网络访问控制</category>
+        <category>TLS</category>
+        <category>传输层安全</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2021/12/06/CVE-2021-39503/</guid>
             <title>CVE-2021-39503复现</title>

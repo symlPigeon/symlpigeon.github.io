@@ -26,6 +26,8 @@
     <category term="EAP" />
     <category term="802.1X" />
     <category term="网络访问控制" />
+    <category term="TLS" />
+    <category term="传输层安全" />
     <entry>
         <id>http://symlpigeon.github.io/2022/06/02/protocol-secure-chap4-3/</id>
         <title>密钥分配和用户认证协议-III</title>

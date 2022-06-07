@@ -29,6 +29,8 @@
         <category>EAP</category>
         <category>802.1X</category>
         <category>网络访问控制</category>
+        <category>TLS</category>
+        <category>传输层安全</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2022/02/10/re-review2/</guid>
             <title>ELF格式学习</title>
