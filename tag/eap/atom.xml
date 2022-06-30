@@ -28,6 +28,7 @@
     <category term="网络访问控制" />
     <category term="TLS" />
     <category term="传输层安全" />
+    <category term="代数" />
     <entry>
         <id>http://symlpigeon.github.io/2022/06/05/protocol-secure-chap5-eap/</id>
         <title>基于端口的网络访问控制</title>

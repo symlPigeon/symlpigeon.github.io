@@ -31,6 +31,7 @@
         <category>网络访问控制</category>
         <category>TLS</category>
         <category>传输层安全</category>
+        <category>代数</category>
         <item>
             <guid isPermalink="true">http://symlpigeon.github.io/2022/03/22/program-start/</guid>
             <title>关于一个ELF程序是怎么启动的这件事以及尝试分析然后大失败的结果</title>

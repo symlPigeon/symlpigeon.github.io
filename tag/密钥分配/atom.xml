@@ -28,6 +28,7 @@
     <category term="网络访问控制" />
     <category term="TLS" />
     <category term="传输层安全" />
+    <category term="代数" />
     <entry>
         <id>http://symlpigeon.github.io/2022/04/14/protocol-secure-chap4-1/</id>
         <title>密钥分配和用户认证协议-I</title>
