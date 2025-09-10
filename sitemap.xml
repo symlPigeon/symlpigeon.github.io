@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://symlpigeon.github.io/2025/09/10/some-things/</loc>
+    
+    <lastmod>2025-09-10</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>http://symlpigeon.github.io/categories/index.html</loc>
     
     <lastmod>2025-09-10</lastmod>
@@ -20,7 +29,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/statistics/index.html</loc>
+    <loc>http://symlpigeon.github.io/tags/index.html</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -29,7 +38,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/tags/index.html</loc>
+    <loc>http://symlpigeon.github.io/statistics/index.html</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -101,15 +110,6 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2023/08/30/some-tricks-about-import/</loc>
-    
-    <lastmod>2025-09-10</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>http://symlpigeon.github.io/2023/03/01/digital-comm-basis-3-3/</loc>
     
     <lastmod>2025-09-10</lastmod>
@@ -128,6 +128,15 @@
   </url>
   
   <url>
+    <loc>http://symlpigeon.github.io/2023/08/30/some-tricks-about-import/</loc>
+    
+    <lastmod>2025-09-10</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>http://symlpigeon.github.io/2023/09/13/20230913-fft/</loc>
     
     <lastmod>2025-09-10</lastmod>
@@ -137,7 +146,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2023/02/11/electron-dev-transp/</loc>
+    <loc>http://symlpigeon.github.io/2023/02/27/digital-comm-basis-3-2/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -146,7 +155,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2023/02/27/digital-comm-basis-3-2/</loc>
+    <loc>http://symlpigeon.github.io/2023/02/11/electron-dev-transp/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -191,7 +200,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/12/08/some-essay/</loc>
+    <loc>http://symlpigeon.github.io/2022/11/14/digital-comm-basis-1/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -200,7 +209,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/11/14/digital-comm-basis-1/</loc>
+    <loc>http://symlpigeon.github.io/2022/12/08/some-essay/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -245,7 +254,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/08/03/miller-rabin-prime-test/</loc>
+    <loc>http://symlpigeon.github.io/2022/08/19/bmp-file-format/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -254,7 +263,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/08/19/bmp-file-format/</loc>
+    <loc>http://symlpigeon.github.io/2022/08/03/miller-rabin-prime-test/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -344,7 +353,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/03/16/wiener-attack/</loc>
+    <loc>http://symlpigeon.github.io/2022/04/14/protocol-secure-chap4-1/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -353,7 +362,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/2022/04/14/protocol-secure-chap4-1/</loc>
+    <loc>http://symlpigeon.github.io/2022/03/16/wiener-attack/</loc>
     
     <lastmod>2025-09-10</lastmod>
     
@@ -543,69 +552,6 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/tags/%E4%BA%BA%E7%94%9F%E7%9A%84%E7%BB%88%E6%9E%81%E7%9B%AE%E7%9A%84/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E6%95%B0%E5%AD%97%E9%80%9A%E4%BF%A1/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E4%BC%98%E5%8C%96/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E5%88%86%E6%B2%BB/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/Python/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/Electron/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E5%82%85%E9%87%8C%E5%8F%B6%E5%8F%98%E6%8D%A2/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E5%85%89%E7%BA%BF%E8%BF%BD%E8%B8%AA/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>http://symlpigeon.github.io/tags/%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
@@ -621,34 +567,6 @@
   
   <url>
     <loc>http://symlpigeon.github.io/tags/RSA/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E5%AE%89%E5%85%A8%E5%A4%9A%E6%96%B9%E8%AE%A1%E7%AE%97/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/ELF/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/Linux/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/tags/%E6%A0%88%E6%BA%A2%E5%87%BA/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -677,6 +595,34 @@
   
   <url>
     <loc>http://symlpigeon.github.io/tags/Kerberos/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E5%AE%89%E5%85%A8%E5%A4%9A%E6%96%B9%E8%AE%A1%E7%AE%97/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/ELF/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/Linux/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E6%A0%88%E6%BA%A2%E5%87%BA/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -753,13 +699,6 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/tags/%E7%B4%A0%E6%80%A7%E6%A3%80%E9%AA%8C/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>http://symlpigeon.github.io/tags/BMP/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
@@ -768,6 +707,13 @@
   
   <url>
     <loc>http://symlpigeon.github.io/tags/%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E7%B4%A0%E6%80%A7%E6%A3%80%E9%AA%8C/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -829,6 +775,69 @@
     <priority>0.2</priority>
   </url>
   
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E6%95%B0%E5%AD%97%E9%80%9A%E4%BF%A1/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E4%BA%BA%E7%94%9F%E7%9A%84%E7%BB%88%E6%9E%81%E7%9B%AE%E7%9A%84/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E4%BC%98%E5%8C%96/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E5%88%86%E6%B2%BB/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/Electron/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/Python/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E5%82%85%E9%87%8C%E5%8F%B6%E5%8F%98%E6%8D%A2/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E5%9B%BE%E5%BD%A2%E5%AD%A6/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/tags/%E5%85%89%E7%BA%BF%E8%BF%BD%E8%B8%AA/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
 
   
   <url>
@@ -853,14 +862,7 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E9%9A%8F%E7%AC%94/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%97%A0%E7%BA%BF%E9%80%9A%E4%BF%A1%E4%B8%8E%E5%AE%89%E5%85%A8/</loc>
+    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -874,13 +876,6 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>http://symlpigeon.github.io/categories/%E5%AF%86%E7%A0%81%E5%AD%A6/%E5%85%AC%E9%92%A5%E5%AF%86%E7%A0%81/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
@@ -888,14 +883,28 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/</loc>
+    <loc>http://symlpigeon.github.io/categories/%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%97%A0%E7%BA%BF%E9%80%9A%E4%BF%A1%E4%B8%8E%E5%AE%89%E5%85%A8/%E6%95%B0%E5%AD%97%E9%80%9A%E4%BF%A1/</loc>
+    <loc>http://symlpigeon.github.io/categories/%E5%AF%86%E7%A0%81%E5%AD%A6/%E5%AE%89%E5%85%A8%E8%AE%A1%E7%AE%97/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/Pwn/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%9F%BA%E7%A1%80/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -903,34 +912,6 @@
   
   <url>
     <loc>http://symlpigeon.github.io/categories/%E5%AF%86%E7%A0%81%E5%AD%A6/%E5%AF%B9%E7%A7%B0%E5%AF%86%E7%A0%81/%E5%88%86%E7%BB%84%E5%AF%86%E7%A0%81/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -951,77 +932,21 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E5%AF%86%E7%A0%81%E5%AD%A6/%E5%AE%89%E5%85%A8%E8%AE%A1%E7%AE%97/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E9%9A%90%E5%86%99%E4%B8%8E%E5%8F%96%E8%AF%81/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E5%A5%BD%E7%8E%A9%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E6%9D%82%E9%A1%B9/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/%E5%85%89%E7%BA%BF%E8%BF%BD%E8%B8%AA/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/Python/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%9F%BA%E7%A1%80/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E4%BA%8C%E8%BF%9B%E5%88%B6/Pwn/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>http://symlpigeon.github.io/categories/%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8/%E7%BD%91%E7%BB%9C%E5%8D%8F%E8%AE%AE/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1035,21 +960,14 @@
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E4%BF%A1%E6%81%AF%E8%AE%BA%E5%92%8C%E7%BC%96%E7%A0%81/</loc>
+    <loc>http://symlpigeon.github.io/categories/%E9%9A%8F%E7%AC%94/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
-    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E6%95%B0%E8%AE%BA%E7%AE%97%E6%B3%95/</loc>
-    <lastmod>2025-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E9%9A%90%E5%86%99%E4%B8%8E%E5%8F%96%E8%AF%81/%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E5%88%86%E6%9E%90/</loc>
+    <loc>http://symlpigeon.github.io/categories/%E6%97%A0%E7%BA%BF%E9%80%9A%E4%BF%A1%E4%B8%8E%E5%AE%89%E5%85%A8/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -1077,7 +995,98 @@
   </url>
   
   <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E9%9A%90%E5%86%99%E4%B8%8E%E5%8F%96%E8%AF%81/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E5%A5%BD%E7%8E%A9%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
     <loc>http://symlpigeon.github.io/categories/%E6%97%A0%E7%BA%BF%E9%80%9A%E4%BF%A1%E4%B8%8E%E5%AE%89%E5%85%A8/%E7%8E%B0%E4%BB%A3%E6%95%B0%E5%AD%97%E9%80%9A%E4%BF%A1%E6%96%B9%E5%BC%8F/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%97%A0%E7%BA%BF%E9%80%9A%E4%BF%A1%E4%B8%8E%E5%AE%89%E5%85%A8/%E6%95%B0%E5%AD%97%E9%80%9A%E4%BF%A1/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E4%BF%A1%E6%81%AF%E8%AE%BA%E5%92%8C%E7%BC%96%E7%A0%81/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E6%9D%82%E9%A1%B9/%E9%9A%90%E5%86%99%E4%B8%8E%E5%8F%96%E8%AF%81/%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E5%88%86%E6%9E%90/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E6%95%B0%E8%AE%BA%E7%AE%97%E6%B3%95/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%AE%97%E6%B3%95/%E6%9D%82%E9%A1%B9/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/Python/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/</loc>
+    <lastmod>2025-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://symlpigeon.github.io/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/%E5%85%89%E7%BA%BF%E8%BF%BD%E8%B8%AA/</loc>
     <lastmod>2025-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
